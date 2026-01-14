@@ -43,6 +43,7 @@
 
       <div class="terminal-container-inner" style="height: 100%; display: flex; flex-direction: column">
         <a-tabs
+          v-if="sshStore.terminalList.length > 0"
           v-model:activeKey="activeTerminalKey"
           type="editable-card"
           size="small"
@@ -76,9 +77,9 @@
           </template>
         </a-tabs>
 
-        <div v-if="sshStore.terminalList.length === 0" style="text-align: center; flex: 1; display: flex; align-items: center; justify-content: center">
+        <div v-else style="flex: 1; display: flex; align-items: center; justify-content: center">
           <a-empty description="No active terminals">
-            <a-button type="primary" size="small" @click="handleQuickConnect">
+            <a-button type="primary" @click="handleQuickConnect">
               <PlusOutlined />
               Connect to SSH Host
             </a-button>

@@ -25,6 +25,10 @@ func RunMigrations(db *gorm.DB) error {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
+	// Add indexes for performance optimization
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_connection_logs_user_id ON connection_logs(user_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_connection_logs_created_at ON connection_logs(created_at)")
+
 	// Create default admin user if no users exist
 	var count int64
 	db.Model(&models.User{}).Count(&count)

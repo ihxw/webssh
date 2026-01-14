@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ihxw/webssh/internal/config"
@@ -48,9 +49,15 @@ func main() {
 	router.Use(middleware.CORS())
 	router.Use(middleware.Logger())
 
+	// Global Middlewares
+	router.Use(middleware.SecurityMiddleware())
+
+	// Auth rate limiter (5 attempts per minute per IP)
+	loginRateLimiter := middleware.NewRateLimiter(5, 1*time.Minute)
+
 	// Public routes
 	authHandler := handlers.NewAuthHandler(db, cfg)
-	router.POST("/api/auth/login", authHandler.Login)
+	router.POST("/api/auth/login", loginRateLimiter.RateLimitMiddleware(), authHandler.Login)
 	router.POST("/api/auth/logout", authHandler.Logout)
 
 	// WebSocket SSH route (authenticated via one-time ticket in handler)
