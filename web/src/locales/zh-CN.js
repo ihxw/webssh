@@ -31,7 +31,8 @@ export default {
         recordings: '录制',
         users: '用户',
         profile: '个人资料',
-        logout: '退出登录'
+        logout: '退出登录',
+        system: '系统设置'
     },
     auth: {
         login: '登录',
@@ -179,5 +180,29 @@ export default {
         verificationCodeLabel: '验证码',
         verificationCodeRequired: '请输入验证码',
         verificationCodePlaceholder: '请输入 6 位验证码或备用码'
+    },
+    system: {
+        backupTitle: '数据库备份',
+        backupDesc: '备份当前的系统数据库，包括所有用户、主机配置、命令模板和连接日志。',
+        startBackup: '立即备份',
+        backupSuccess: '备份文件生成成功，开始下载',
+        backupFailed: '备份失败',
+        restoreTitle: '数据库还原',
+        restoreDesc: '通过上传之前备份的 .db 文件来还原系统状态。',
+        restoreWarningTitle: '高风险操作',
+        restoreWarningDesc: '还原操作将完全覆盖当前数据库，所有现有数据将被替换为备份中的数据。此操作不可逆，请谨慎操作。',
+        startRestore: '立即还原',
+        restoreConfirmTitle: '确定要还原数据库吗？',
+        restoreConfirmContent: '还原后，当前系统中的所有更改都将被覆盖。系统将自动重新加载。',
+        restoreSuccess: '数据库还原成功，正在重新加载系统...',
+        restoreFailed: '还原失败',
+        invalidFileType: '无效的文件类型，请上传 .db 备份文件',
+        settingsTitle: '系统参数设置',
+        sshTimeout: 'SSH 超时时间',
+        maxConnectionsPerUser: '每用户最大连接数',
+        loginRateLimit: '登录频率限制 (次/分钟)',
+        saveSettingsSuccess: '设置保存成功',
+        saveSettingsFailed: '设置保存失败',
+        fetchSettingsFailed: '获取设置失败'
     }
 }

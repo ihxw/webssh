@@ -31,7 +31,8 @@ export default {
         recordings: 'Recordings',
         users: 'Users',
         profile: 'Profile',
-        logout: 'Logout'
+        logout: 'Logout',
+        system: 'System Settings'
     },
     auth: {
         login: 'Login',
@@ -179,5 +180,29 @@ export default {
         verificationCodeLabel: 'Verification Code',
         verificationCodeRequired: 'Please input your verification code!',
         verificationCodePlaceholder: 'Enter 6-digit code or backup code'
+    },
+    system: {
+        backupTitle: 'Database Backup',
+        backupDesc: 'Backup the current system database, including all users, host configurations, command templates, and connection logs.',
+        startBackup: 'Start Backup',
+        backupSuccess: 'Backup file generated successfully, starting download',
+        backupFailed: 'Backup failed',
+        restoreTitle: 'Database Restore',
+        restoreDesc: 'Restore the system state by uploading a previously backed up .db file.',
+        restoreWarningTitle: 'High Risk Operation',
+        restoreWarningDesc: 'The restore operation will completely overwrite the current database. All existing data will be replaced by the data in the backup. This action is irreversible, proceed with caution.',
+        startRestore: 'Start Restore',
+        restoreConfirmTitle: 'Are you sure you want to restore the database?',
+        restoreConfirmContent: 'After restoration, all current changes in the system will be overwritten. The system will reload automatically.',
+        restoreSuccess: 'Database restored successfully, reloading system...',
+        restoreFailed: 'Restore failed',
+        invalidFileType: 'Invalid file type, please upload a .db backup file',
+        settingsTitle: 'System Settings',
+        sshTimeout: 'SSH Timeout',
+        maxConnectionsPerUser: 'Max Connections Per User',
+        loginRateLimit: 'Login Rate Limit (req/min)',
+        saveSettingsSuccess: 'Settings saved successfully',
+        saveSettingsFailed: 'Failed to save settings',
+        fetchSettingsFailed: 'Failed to fetch settings'
     }
 }

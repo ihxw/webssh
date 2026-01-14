@@ -87,3 +87,10 @@ func (rl *RateLimiter) RateLimitMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// SetLimit updates the rate limit at runtime
+func (rl *RateLimiter) SetLimit(limit int) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	rl.limit = limit
+}

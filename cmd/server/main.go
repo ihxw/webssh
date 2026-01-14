@@ -52,11 +52,12 @@ func main() {
 	// Global Middlewares
 	router.Use(middleware.SecurityMiddleware())
 
-	// Auth rate limiter (5 attempts per minute per IP)
-	loginRateLimiter := middleware.NewRateLimiter(5, 1*time.Minute)
+	// Auth rate limiter (20 attempts per minute per IP)
+	loginRateLimiter := middleware.NewRateLimiter(20, 1*time.Minute)
 
 	// Public routes
 	authHandler := handlers.NewAuthHandler(db, cfg)
+	handlers.LoginRateLimiter = loginRateLimiter // Set global reference for hot-reloading
 	router.POST("/api/auth/login", loginRateLimiter.RateLimitMiddleware(), authHandler.Login)
 	router.POST("/api/auth/verify-2fa-login", authHandler.Verify2FALogin)
 	router.POST("/api/auth/logout", authHandler.Logout)
@@ -116,14 +117,28 @@ func main() {
 		protected.POST("/auth/2fa/backup-codes", twoFAHandler.RegenerateBackupCodes)
 
 		// Admin routes
-		admin := protected.Group("/users")
-		admin.Use(middleware.AdminMiddleware())
+		adminGroup := protected.Group("")
+		adminGroup.Use(middleware.AdminMiddleware())
 		{
+			// User management
 			userHandler := handlers.NewUserHandler(db)
-			admin.GET("", userHandler.GetUsers)
-			admin.POST("", userHandler.CreateUser)
-			admin.PUT("/:id", userHandler.UpdateUser)
-			admin.DELETE("/:id", userHandler.DeleteUser)
+			users := adminGroup.Group("/users")
+			{
+				users.GET("", userHandler.GetUsers)
+				users.POST("", userHandler.CreateUser)
+				users.PUT("/:id", userHandler.UpdateUser)
+				users.DELETE("/:id", userHandler.DeleteUser)
+			}
+
+			// System management
+			systemHandler := handlers.NewSystemHandler(db, cfg)
+			system := adminGroup.Group("/system")
+			{
+				system.GET("/backup", systemHandler.Backup)
+				system.POST("/restore", systemHandler.Restore)
+				system.GET("/settings", systemHandler.GetSettings)
+				system.PUT("/settings", systemHandler.UpdateSettings)
+			}
 		}
 	}
 

@@ -10,6 +10,7 @@ security:
   # Generate with: openssl rand -base64 32
   jwt_secret: "zheshijwtdeanquanma"  # Set via WEBSSH_JWT_SECRET environment variable
   encryption_key: "f9751dd3bec89bfbbebe6d45f02d60b7"  # Set via WEBSSH_ENCRYPTION_KEY environment variable (must be exactly 32 bytes)
+  login_rate_limit: 20
 
 ssh:
   timeout: 30s

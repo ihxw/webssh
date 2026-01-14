@@ -27,8 +27,9 @@ type DatabaseConfig struct {
 }
 
 type SecurityConfig struct {
-	JWTSecret     string `mapstructure:"jwt_secret"`
-	EncryptionKey string `mapstructure:"encryption_key"`
+	JWTSecret      string `mapstructure:"jwt_secret"`
+	EncryptionKey  string `mapstructure:"encryption_key"`
+	LoginRateLimit int    `mapstructure:"login_rate_limit"`
 }
 
 type SSHConfig struct {
@@ -54,6 +55,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("database.path", "./data/webssh.db")
 	viper.SetDefault("ssh.timeout", "30s")
 	viper.SetDefault("ssh.max_connections_per_user", 10)
+	viper.SetDefault("security.login_rate_limit", 20)
 	viper.SetDefault("log.level", "info")
 	viper.SetDefault("log.file", "./logs/app.log")
 
@@ -101,4 +103,20 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+// SaveConfig writes the current configuration back to the config file
+func (c *Config) SaveConfig() error {
+	viper.Set("server.port", c.Server.Port)
+	viper.Set("server.mode", c.Server.Mode)
+	viper.Set("database.path", c.Database.Path)
+	viper.Set("security.jwt_secret", c.Security.JWTSecret)
+	viper.Set("security.encryption_key", c.Security.EncryptionKey)
+	viper.Set("security.login_rate_limit", c.Security.LoginRateLimit)
+	viper.Set("ssh.timeout", c.SSH.Timeout)
+	viper.Set("ssh.max_connections_per_user", c.SSH.MaxConnectionsPerUser)
+	viper.Set("log.level", c.Log.Level)
+	viper.Set("log.file", c.Log.File)
+
+	return viper.WriteConfig()
 }

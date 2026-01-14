@@ -40,6 +40,10 @@
               <TeamOutlined />
               {{ t('nav.users') }}
             </a-menu-item>
+            <a-menu-item v-if="authStore.user?.role === 'admin'" key="SystemManagement">
+              <SettingOutlined />
+              {{ t('nav.system') }}
+            </a-menu-item>
           </a-menu>
 
           <div style="display: flex; align-items: center; gap: 16px">
@@ -106,7 +110,8 @@ import {
   ThunderboltOutlined,
   VideoCameraOutlined,
   BulbOutlined,
-  BulbFilled
+  BulbFilled,
+  SettingOutlined
 } from '@ant-design/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
