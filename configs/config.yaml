@@ -1,21 +1,38 @@
 server:
+  # 服务器监听端口
   port: 3000
-  mode: debug  # debug or release
+  # 运行模式: debug (调试模式) 或 release (发布模式)
+  # debug 模式下会输出更多日志，release 模式适用于生产环境
+  mode: debug
 
 database:
+  # SQLite 数据库文件存储路径
   path: ./data/webssh.db
 
 security:
-  # IMPORTANT: Change these in production!
-  # Generate with: openssl rand -base64 32
-  jwt_secret: "zheshijwtdeanquanma"  # Set via WEBSSH_JWT_SECRET environment variable
-  encryption_key: "f9751dd3bec89bfbbebe6d45f02d60b7"  # Set via WEBSSH_ENCRYPTION_KEY environment variable (must be exactly 32 bytes)
+  # JWT 签名密钥
+  # 重要: 在生产环境中请务必修改！
+  # 可以通过环境变量 WEBSSH_JWT_SECRET 设置
+  jwt_secret: "zheshijwtdeanquanma"
+  
+  # 数据加密密钥 (用于加密存储的密码和私钥)
+  # 重要: 必须正好是 32 字节 (AES-256)
+  # 可以通过环境变量 WEBSSH_ENCRYPTION_KEY 设置
+  encryption_key: "f9751dd3bec89bfbbebe6d45f02d60b7"
+  
+  # 登录频率限制 (每分钟允许的尝试次数)
   login_rate_limit: 20
 
 ssh:
+  # SSH 连接建立超时时间
   timeout: 30s
+  # SSH 会话空闲超时时间 (超过此时间无操作将自动断开)
+  idle_timeout: 30m
+  # 每个用户允许的最大并发 SSH 连接数
   max_connections_per_user: 10
 
 log:
+  # 日志级别: debug, info, warn, error
   level: info
+  # 日志文件输出路径
   file: ./logs/app.log

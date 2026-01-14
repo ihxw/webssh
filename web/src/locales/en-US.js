@@ -199,6 +199,7 @@ export default {
         invalidFileType: 'Invalid file type, please upload a .db backup file',
         settingsTitle: 'System Settings',
         sshTimeout: 'SSH Timeout',
+        idleTimeout: 'SSH Idle Timeout',
         maxConnectionsPerUser: 'Max Connections Per User',
         loginRateLimit: 'Login Rate Limit (req/min)',
         saveSettingsSuccess: 'Settings saved successfully',

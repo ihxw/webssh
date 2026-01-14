@@ -199,6 +199,7 @@ export default {
         invalidFileType: '无效的文件类型，请上传 .db 备份文件',
         settingsTitle: '系统参数设置',
         sshTimeout: 'SSH 超时时间',
+        idleTimeout: 'SSH 空闲超时',
         maxConnectionsPerUser: '每用户最大连接数',
         loginRateLimit: '登录频率限制 (次/分钟)',
         saveSettingsSuccess: '设置保存成功',

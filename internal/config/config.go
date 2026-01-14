@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const Version = "1.0.0"
+const Version = "1.0.1"
 
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
@@ -34,6 +34,7 @@ type SecurityConfig struct {
 
 type SSHConfig struct {
 	Timeout               string `mapstructure:"timeout"`
+	IdleTimeout           string `mapstructure:"idle_timeout"`
 	MaxConnectionsPerUser int    `mapstructure:"max_connections_per_user"`
 }
 
@@ -54,6 +55,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("server.mode", "debug")
 	viper.SetDefault("database.path", "./data/webssh.db")
 	viper.SetDefault("ssh.timeout", "30s")
+	viper.SetDefault("ssh.idle_timeout", "30m")
 	viper.SetDefault("ssh.max_connections_per_user", 10)
 	viper.SetDefault("security.login_rate_limit", 20)
 	viper.SetDefault("log.level", "info")
@@ -114,6 +116,7 @@ func (c *Config) SaveConfig() error {
 	viper.Set("security.encryption_key", c.Security.EncryptionKey)
 	viper.Set("security.login_rate_limit", c.Security.LoginRateLimit)
 	viper.Set("ssh.timeout", c.SSH.Timeout)
+	viper.Set("ssh.idle_timeout", c.SSH.IdleTimeout)
 	viper.Set("ssh.max_connections_per_user", c.SSH.MaxConnectionsPerUser)
 	viper.Set("log.level", c.Log.Level)
 	viper.Set("log.file", c.Log.File)

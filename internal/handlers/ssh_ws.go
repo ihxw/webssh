@@ -102,6 +102,12 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 		timeout = 30 * time.Second
 	}
 
+	// Parse idle timeout
+	idleTimeout, err := time.ParseDuration(h.config.SSH.IdleTimeout)
+	if err != nil {
+		idleTimeout = 30 * time.Minute
+	}
+
 	// Create SSH client
 	sshClient, err := ssh.NewSSHClient(&ssh.SSHConfig{
 		Host:       host.Host,
@@ -285,6 +291,9 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 	// Read from WebSocket and send to SSH stdin
 	go func() {
 		for {
+			if idleTimeout > 0 {
+				ws.SetReadDeadline(time.Now().Add(idleTimeout))
+			}
 			messageType, message, err := ws.ReadMessage()
 			if err != nil {
 				log.Printf("Error reading from WebSocket: %v", err)

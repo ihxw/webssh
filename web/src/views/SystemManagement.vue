@@ -44,6 +44,11 @@
               </a-form-item>
             </a-col>
             <a-col :span="8">
+              <a-form-item :label="t('system.idleTimeout')" name="idle_timeout">
+                <a-input v-model:value="settingsForm.idle_timeout" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
               <a-form-item :label="t('system.maxConnectionsPerUser')" name="max_connections_per_user">
                 <a-input-number v-model:value="settingsForm.max_connections_per_user" :min="1" style="width: 100%" />
               </a-form-item>
@@ -81,6 +86,7 @@ const settingsLoading = ref(false)
 
 const settingsForm = reactive({
   ssh_timeout: '30s',
+  idle_timeout: '30m',
   max_connections_per_user: 10,
   login_rate_limit: 20
 })

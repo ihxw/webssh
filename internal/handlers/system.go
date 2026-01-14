@@ -123,6 +123,7 @@ func copyFile(src, dst string) error {
 func (h *SystemHandler) GetSettings(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, gin.H{
 		"ssh_timeout":              h.config.SSH.Timeout,
+		"idle_timeout":             h.config.SSH.IdleTimeout,
 		"max_connections_per_user": h.config.SSH.MaxConnectionsPerUser,
 		"login_rate_limit":         h.config.Security.LoginRateLimit,
 	})
@@ -131,6 +132,7 @@ func (h *SystemHandler) GetSettings(c *gin.Context) {
 // UpdateSettingsRequest defines the request body for updating settings
 type UpdateSettingsRequest struct {
 	SSHTimeout            string `json:"ssh_timeout" binding:"required"`
+	IdleTimeout           string `json:"idle_timeout" binding:"required"`
 	MaxConnectionsPerUser int    `json:"max_connections_per_user" binding:"required"`
 	LoginRateLimit        int    `json:"login_rate_limit" binding:"required"`
 }
@@ -148,6 +150,7 @@ func (h *SystemHandler) UpdateSettings(c *gin.Context) {
 
 	// Update in-memory config
 	h.config.SSH.Timeout = req.SSHTimeout
+	h.config.SSH.IdleTimeout = req.IdleTimeout
 	h.config.SSH.MaxConnectionsPerUser = req.MaxConnectionsPerUser
 	h.config.Security.LoginRateLimit = req.LoginRateLimit
 
