@@ -206,21 +206,20 @@ const handleLogin = async () => {
   error.value = ''
 
   try {
-    const response = await api.post('/auth/login', {
-      username: formState.username,
-      password: formState.password,
-      remember: formState.remember
-    })
+    const response = await authStore.login(
+      formState.username,
+      formState.password,
+      formState.remember
+    )
 
-    // Check if 2FA is required
+    // Check if 2FA is required (store.login returns the raw response data)
     if (response.requires_2fa) {
       requires2FA.value = true
       tempUserId.value = response.user_id
       message.info(t('twofa.enterCode'))
     } else {
       // Normal login without 2FA
-      authStore.setToken(response.token)
-      authStore.setUser(response.user)
+      // Store already handled token setting
       message.success(t('auth.loginSuccess'))
       
       if (route.query.redirect) {
@@ -246,13 +245,8 @@ const handleVerify2FA = async () => {
   error.value = ''
 
   try {
-    const response = await api.post('/auth/verify-2fa-login', {
-      user_id: tempUserId.value,
-      code: twoFAForm.code
-    })
-
-    authStore.setToken(response.token)
-    authStore.setUser(response.user)
+    await authStore.verify2FA(tempUserId.value, twoFAForm.code)
+    
     message.success(t('auth.loginSuccess'))
     
     if (route.query.redirect) {

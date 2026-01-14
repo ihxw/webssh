@@ -23,3 +23,7 @@ export const changePassword = async (currentPassword, newPassword) => {
 export const refreshToken = async (token) => {
     return await api.post('/auth/refresh', { refresh_token: token })
 }
+
+export const verify2FALogin = async (userId, code) => {
+    return await api.post('/auth/verify-2fa-login', { user_id: userId, code })
+}
