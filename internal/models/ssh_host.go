@@ -14,6 +14,7 @@ type SSHHost struct {
 	Port                int            `gorm:"default:22" json:"port"`
 	Username            string         `gorm:"size:100;not null" json:"username"`
 	AuthType            string         `gorm:"size:20;not null" json:"auth_type"` // password or key
+	Fingerprint         string         `gorm:"size:255" json:"fingerprint"`       // SSH Host Key Fingerprint (TOFU)
 	PasswordEncrypted   string         `gorm:"type:text" json:"-"`
 	PrivateKeyEncrypted string         `gorm:"type:text" json:"-"`
 	GroupName           string         `gorm:"size:50" json:"group_name"`

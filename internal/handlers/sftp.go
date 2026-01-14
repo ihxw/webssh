@@ -69,12 +69,13 @@ func (h *SftpHandler) getSftpClient(userID uint, hostID string) (*sftp.Client, *
 	}
 
 	sshClient, err := ssh.NewSSHClient(&ssh.SSHConfig{
-		Host:       host.Host,
-		Port:       host.Port,
-		Username:   host.Username,
-		Password:   password,
-		PrivateKey: privateKey,
-		Timeout:    timeout,
+		Host:        host.Host,
+		Port:        host.Port,
+		Username:    host.Username,
+		Password:    password,
+		PrivateKey:  privateKey,
+		Timeout:     timeout,
+		Fingerprint: host.Fingerprint,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create SSH client: %w", err)
@@ -82,6 +83,15 @@ func (h *SftpHandler) getSftpClient(userID uint, hostID string) (*sftp.Client, *
 
 	if err := sshClient.Connect(); err != nil {
 		return nil, nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	// TOFU: Save fingerprint if it was empty
+	if host.Fingerprint == "" {
+		newFp := sshClient.GetFingerprint()
+		if newFp != "" {
+			host.Fingerprint = newFp
+			h.db.Save(&host)
+		}
 	}
 
 	// Create SFTP client

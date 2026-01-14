@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -110,18 +111,39 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 
 	// Create SSH client
 	sshClient, err := ssh.NewSSHClient(&ssh.SSHConfig{
-		Host:       host.Host,
-		Port:       host.Port,
-		Username:   host.Username,
-		Password:   password,
-		PrivateKey: privateKey,
-		Timeout:    timeout,
+		Host:        host.Host,
+		Port:        host.Port,
+		Username:    host.Username,
+		Password:    password,
+		PrivateKey:  privateKey,
+		Timeout:     timeout,
+		Fingerprint: host.Fingerprint,
 	})
 	if err != nil {
 		ws.WriteJSON(gin.H{"type": "error", "data": "Failed to create SSH client: " + err.Error()})
 		return
 	}
 	defer sshClient.Close()
+
+	// ... connLog ... (omitted creation to keep context short, but assuming it follows)
+	// Actually I need to match enough context.
+	// Let's match from Create SSH client to Connect.
+
+	// wsMutex ensures concurrent writes to the websocket are safe
+	var wsMutex sync.Mutex
+
+	// Helper to write to websocket safely
+	writeParams := func(msgType int, data []byte) error {
+		wsMutex.Lock()
+		defer wsMutex.Unlock()
+		return ws.WriteMessage(msgType, data)
+	}
+
+	writeJSON := func(v interface{}) error {
+		wsMutex.Lock()
+		defer wsMutex.Unlock()
+		return ws.WriteJSON(v)
+	}
 
 	// Create connection log
 	connLog := &models.ConnectionLog{
@@ -140,8 +162,18 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 		connLog.Status = "failed"
 		connLog.ErrorMessage = err.Error()
 		h.db.Save(connLog)
-		ws.WriteJSON(gin.H{"type": "error", "data": "Failed to connect: " + err.Error()})
+		writeJSON(gin.H{"type": "error", "data": "Failed to connect (Host Verification Failed): " + err.Error()})
 		return
+	}
+
+	// TOFU: Save fingerprint if it was empty
+	if host.Fingerprint == "" {
+		newFp := sshClient.GetFingerprint()
+		if newFp != "" {
+			host.Fingerprint = newFp
+			h.db.Save(&host)
+			log.Printf("TOFU: Saved new fingerprint for host %s: %s", host.Host, newFp)
+		}
 	}
 
 	// Create session
@@ -149,7 +181,7 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 		connLog.Status = "failed"
 		connLog.ErrorMessage = err.Error()
 		h.db.Save(connLog)
-		ws.WriteJSON(gin.H{"type": "error", "data": "Failed to create session: " + err.Error()})
+		writeJSON(gin.H{"type": "error", "data": "Failed to create session: " + err.Error()})
 		return
 	}
 
@@ -160,7 +192,7 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 		connLog.Status = "failed"
 		connLog.ErrorMessage = err.Error()
 		h.db.Save(connLog)
-		ws.WriteJSON(gin.H{"type": "error", "data": "Failed to request PTY: " + err.Error()})
+		writeJSON(gin.H{"type": "error", "data": "Failed to request PTY: " + err.Error()})
 		return
 	}
 
@@ -170,7 +202,7 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 		connLog.Status = "failed"
 		connLog.ErrorMessage = err.Error()
 		h.db.Save(connLog)
-		ws.WriteJSON(gin.H{"type": "error", "data": "Failed to get stdin pipe: " + err.Error()})
+		writeJSON(gin.H{"type": "error", "data": "Failed to get stdin pipe: " + err.Error()})
 		return
 	}
 
@@ -179,7 +211,7 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 		connLog.Status = "failed"
 		connLog.ErrorMessage = err.Error()
 		h.db.Save(connLog)
-		ws.WriteJSON(gin.H{"type": "error", "data": "Failed to get stdout pipe: " + err.Error()})
+		writeJSON(gin.H{"type": "error", "data": "Failed to get stdout pipe: " + err.Error()})
 		return
 	}
 
@@ -188,7 +220,7 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 		connLog.Status = "failed"
 		connLog.ErrorMessage = err.Error()
 		h.db.Save(connLog)
-		ws.WriteJSON(gin.H{"type": "error", "data": "Failed to get stderr pipe: " + err.Error()})
+		writeJSON(gin.H{"type": "error", "data": "Failed to get stderr pipe: " + err.Error()})
 		return
 	}
 
@@ -197,7 +229,7 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 		connLog.Status = "failed"
 		connLog.ErrorMessage = err.Error()
 		h.db.Save(connLog)
-		ws.WriteJSON(gin.H{"type": "error", "data": "Failed to start shell: " + err.Error()})
+		writeJSON(gin.H{"type": "error", "data": "Failed to start shell: " + err.Error()})
 		return
 	}
 
@@ -206,7 +238,7 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 	h.db.Save(connLog)
 
 	// Send success message
-	ws.WriteJSON(gin.H{"type": "connected", "data": "Connected successfully"})
+	writeJSON(gin.H{"type": "connected", "data": "Connected successfully"})
 
 	// Channel to signal completion
 	done := make(chan bool)
@@ -237,6 +269,22 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 		}
 	}
 
+	// Ping loop to keep connection alive
+	go func() {
+		ticker := time.NewTicker(20 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := writeParams(websocket.PingMessage, []byte{}); err != nil {
+					return
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+
 	// Read from SSH stdout and send to WebSocket
 	go func() {
 		buf := make([]byte, 1024)
@@ -259,7 +307,7 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 					recordFile.Write(entry)
 					recordFile.WriteString("\n")
 				}
-				if err := ws.WriteMessage(websocket.TextMessage, data); err != nil {
+				if err := writeParams(websocket.TextMessage, data); err != nil {
 					log.Printf("Error writing to WebSocket: %v", err)
 					done <- true
 					return
@@ -280,7 +328,7 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 				return
 			}
 			if n > 0 {
-				if err := ws.WriteMessage(websocket.TextMessage, buf[:n]); err != nil {
+				if err := writeParams(websocket.TextMessage, buf[:n]); err != nil {
 					log.Printf("Error writing to WebSocket: %v", err)
 					return
 				}
@@ -322,6 +370,11 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 					// Handle plain text input
 					stdin.Write(message)
 				}
+			} else if messageType == websocket.PongMessage {
+				// Pong received, reset deadline (handled by SetReadDeadline above implicitly on next read)
+				// Actually, ReadMessage handles Ping/Pong control messages mostly automatically,
+				// but we need to ensure our idle timeout is reset.
+				// Since we call SetReadDeadline before ReadMessage, any message including Pong will allow the loop to continue.
 			}
 		}
 	}()

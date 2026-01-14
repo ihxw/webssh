@@ -87,6 +87,10 @@
           show-icon
           style="margin-bottom: 16px"
         />
+        
+        <p style="color: #ff4d4f; font-size: 12px; margin-bottom: 16px">
+          {{ t('twofa.backupCodesWarning') }}
+        </p>
 
         <a-form-item
           :label="t('twofa.verificationCodeLabel')"

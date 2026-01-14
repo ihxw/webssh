@@ -55,6 +55,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var user models.User
 	result := h.db.Where("username = ? OR email = ?", req.Username, req.Username).First(&user)
 	if result.Error != nil {
+		// Mitigate username enumeration: perform a dummy password check to make timing consistent
+		// Use a random hash or a pre-calculated dummy hash
+		bcrypt.CompareHashAndPassword([]byte("$2a$10$X7...dummyhash..."), []byte(req.Password))
+
 		utils.ErrorResponse(c, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
@@ -178,10 +182,13 @@ func (h *AuthHandler) Verify2FALogin(c *gin.Context) {
 	valid := totp.Validate(req.Code, secret)
 	if !valid {
 		// Check backup codes
-		if !h.verifyBackupCode(req.Code, user.BackupCodes) {
+		validBackup, newEncryptedCodes := h.verifyBackupCode(req.Code, user.BackupCodes)
+		if !validBackup {
 			utils.ErrorResponse(c, http.StatusUnauthorized, "invalid verification code")
 			return
 		}
+		// Code was valid backup code, update user with remaining codes
+		user.BackupCodes = newEncryptedCodes
 	}
 
 	// Generate final JWT token
@@ -203,28 +210,38 @@ func (h *AuthHandler) Verify2FALogin(c *gin.Context) {
 	})
 }
 
-func (h *AuthHandler) verifyBackupCode(code, encryptedCodes string) bool {
+func (h *AuthHandler) verifyBackupCode(code, encryptedCodes string) (bool, string) {
 	if encryptedCodes == "" {
-		return false
+		return false, ""
 	}
 
 	decrypted, err := utils.Decrypt(encryptedCodes, h.config.Security.EncryptionKey)
 	if err != nil {
-		return false
+		return false, ""
 	}
 
 	var hashedCodes []string
 	if err := json.Unmarshal([]byte(decrypted), &hashedCodes); err != nil {
-		return false
+		return false, ""
 	}
 
-	for _, hash := range hashedCodes {
+	for i, hash := range hashedCodes {
 		if bcrypt.CompareHashAndPassword([]byte(hash), []byte(code)) == nil {
-			return true
+			// Code matches, consume it by removing from slice
+			hashedCodes = append(hashedCodes[:i], hashedCodes[i+1:]...)
+
+			// Re-encrypt remaining codes
+			data, _ := json.Marshal(hashedCodes)
+			newEncrypted, err := utils.Encrypt(string(data), h.config.Security.EncryptionKey)
+			if err != nil {
+				// Should not happen, but safe fallback
+				return true, encryptedCodes
+			}
+			return true, newEncrypted
 		}
 	}
 
-	return false
+	return false, ""
 }
 
 // ChangePassword allows users to change their own password

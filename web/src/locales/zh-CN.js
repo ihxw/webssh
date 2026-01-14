@@ -167,6 +167,7 @@ export default {
         verify: '验证',
         backupCodes: '备用码',
         backupCodesDesc: '请妥善保存这些备用码，每个备用码只能使用一次',
+        backupCodesWarning: '注意：每个备用码使用后即失效，请勿重复使用！',
         downloadBackupCodes: '下载备用码',
         regenerateBackupCodes: '重新生成备用码',
         setupSuccess: '2FA 设置成功',
