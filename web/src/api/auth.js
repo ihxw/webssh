@@ -15,3 +15,7 @@ export const getCurrentUser = async () => {
 export const getWSTicket = async () => {
     return await api.post('/auth/ws-ticket')
 }
+
+export const changePassword = async (currentPassword, newPassword) => {
+    return await api.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword })
+}

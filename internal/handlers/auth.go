@@ -30,6 +30,11 @@ type LoginRequest struct {
 	Remember bool   `json:"remember"`
 }
 
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+}
+
 type LoginResponse struct {
 	Token string       `json:"token"`
 	User  *models.User `json:"user"`
@@ -114,5 +119,44 @@ func (h *AuthHandler) GetWSTicket(c *gin.Context) {
 
 	utils.SuccessResponse(c, http.StatusOK, gin.H{
 		"ticket": ticket,
+	})
+}
+
+// ChangePassword allows users to change their own password
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid request: "+err.Error())
+		return
+	}
+
+	var user models.User
+	if err := h.db.First(&user, userID).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "user not found")
+		return
+	}
+
+	// Verify current password
+	if !user.CheckPassword(req.CurrentPassword) {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "incorrect current password")
+		return
+	}
+
+	// Hash and set new password
+	if err := user.SetPassword(req.NewPassword); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to hash password")
+		return
+	}
+
+	// Save user
+	if err := h.db.Save(&user).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to update password")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, gin.H{
+		"message": "password updated successfully",
 	})
 }

@@ -2,19 +2,19 @@
   <div class="terminal-wrapper" style="height: 100%; display: flex; flex-direction: column; overflow: hidden">
     <div ref="terminalRef" class="terminal-container" style="flex: 1; overflow: hidden; background: #1e1e1e"></div>
     
-    <div v-if="connectionStatus" class="terminal-status" style="padding: 4px 8px; background: #1f1f1f; border-top: 1px solid #303030; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0">
+    <div v-if="connectionStatus" class="terminal-status" style="padding: 2px 8px; background: #1f1f1f; border-top: 1px solid #303030; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; min-height: 28px">
       <div>
-        <a-tag :color="statusColor" size="small" style="font-size: 10px; line-height: 16px; height: 18px">{{ connectionStatus }}</a-tag>
-        <span style="margin-left: 12px; color: #888; font-size: 12px">{{ terminalSize }}</span>
+        <a-tag :color="statusColor" size="small" style="font-size: 10px; line-height: 14px; height: 16px; margin-right: 8px">{{ connectionStatus }}</a-tag>
+        <span style="color: #888; font-size: 11px">{{ terminalSize }}</span>
       </div>
       <div>
         <a-space size="small">
-          <a-button size="small" @click="reconnect" v-if="connectionStatus === 'Disconnected'">
-            <ReloadOutlined />
+          <a-button size="small" type="text" @click="reconnect" v-if="connectionStatus === 'Disconnected'" style="padding: 0 4px; height: 20px; font-size: 11px">
+            <template #icon><ReloadOutlined /></template>
             Reconnect
           </a-button>
-          <a-button size="small" danger @click="disconnect" v-if="connectionStatus === 'Connected'">
-            <DisconnectOutlined />
+          <a-button size="small" type="text" danger @click="disconnect" v-if="connectionStatus === 'Connected'" style="padding: 0 4px; height: 20px; font-size: 11px">
+            <template #icon><DisconnectOutlined /></template>
             Disconnect
           </a-button>
         </a-space>

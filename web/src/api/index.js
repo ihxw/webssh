@@ -32,28 +32,40 @@ api.interceptors.response.use(
         return response.data
     },
     (error) => {
+        // Extract error message
+        let errorMessage = 'Request failed'
+        if (error.response && error.response.data && error.response.data.error) {
+            errorMessage = error.response.data.error
+        } else if (error.message) {
+            errorMessage = error.message
+        }
+
         // Handle errors
         if (error.response) {
-            const { status, data } = error.response
+            const { status, config } = error.response
 
             if (status === 401) {
-                // Unauthorized, clear token and redirect to login
-                localStorage.removeItem('token')
-                window.location.href = '/login'
-                message.error('Session expired, please login again')
-            } else if (status === 403) {
-                message.error(data.error || 'Access denied')
-            } else if (status === 404) {
-                message.error(data.error || 'Resource not found')
-            } else if (status >= 500) {
-                message.error(data.error || 'Server error')
+                // If we are already on the login page or trying to login, just show the error
+                const isLoginRequest = config.url.includes('/auth/login')
+                const isLoginPage = window.location.pathname === '/login' || window.location.hash === '#/login'
+
+                if (isLoginRequest) {
+                    message.error(errorMessage || 'Invalid username or password')
+                } else {
+                    localStorage.removeItem('token')
+                    if (!isLoginPage) {
+                        message.error('Session expired, please login again')
+                        // We use href to force a clean state redirect for session expiration
+                        window.location.href = '/login'
+                    }
+                }
             } else {
-                message.error(data.error || 'Request failed')
+                message.error(errorMessage)
             }
         } else if (error.request) {
-            message.error('Network error, please check your connection')
+            message.error(errorMessage || 'Network error, please check your connection')
         } else {
-            message.error('Request failed: ' + error.message)
+            message.error(errorMessage)
         }
 
         return Promise.reject(error)

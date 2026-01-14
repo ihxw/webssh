@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ihxw/webssh/internal/config"
@@ -57,6 +59,7 @@ func main() {
 		// Auth routes
 		protected.GET("/auth/me", authHandler.GetCurrentUser)
 		protected.POST("/auth/ws-ticket", authHandler.GetWSTicket)
+		protected.POST("/auth/change-password", authHandler.ChangePassword)
 
 		// SSH host routes
 		sshHostHandler := handlers.NewSSHHostHandler(db, cfg)
@@ -83,14 +86,21 @@ func main() {
 	}
 
 	// Serve static files (embedded frontend)
-	// In production, this will serve the built Vue app
-	if cfg.Server.Mode == "release" {
-		router.Static("/assets", "./web/dist/assets")
-		router.StaticFile("/", "./web/dist/index.html")
-		router.NoRoute(func(c *gin.Context) {
-			c.File("./web/dist/index.html")
-		})
-	}
+	// In development with Vite, this may be ignored as you use port 5173
+	// In production or standalone mode, this serves the built Vue app
+	router.Static("/assets", "./web/dist/assets")
+	router.StaticFile("/favicon.ico", "./web/dist/favicon.ico")
+	router.StaticFile("/", "./web/dist/index.html")
+
+	router.NoRoute(func(c *gin.Context) {
+		// If the request is for an API route, return 404
+		if strings.HasPrefix(c.Request.URL.Path, "/api") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "API route not found"})
+			return
+		}
+		// Otherwise serve the index.html for SPA routing
+		c.File("./web/dist/index.html")
+	})
 
 	// Start server
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)

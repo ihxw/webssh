@@ -36,7 +36,7 @@ body {
 
 .compact-layout .ant-layout-content {
   min-height: calc(100vh - 48px);
-  padding: 16px;
+  padding: 8px;
 }
 
 /* Terminal styles */
@@ -125,11 +125,16 @@ body {
 /* Tab styles for terminal */
 .terminal-tabs .ant-tabs-nav {
   margin-bottom: 0;
-  padding: 8px 8px 0;
+  padding: 4px 8px 0;
+}
+
+.terminal-tabs .ant-tabs-tab {
+  padding: 4px 12px !important;
+  font-size: 13px;
 }
 
 .terminal-tabs .ant-tabs-content {
-  height: calc(100vh - 120px);
+  height: calc(100vh - 100px);
 }
 
 .terminal-tabs .ant-tabs-tabpane {

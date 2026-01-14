@@ -37,6 +37,7 @@
         <a-tabs
           v-model:activeKey="activeTerminalKey"
           type="editable-card"
+          size="small"
           @edit="onTabEdit"
           class="terminal-tabs"
           style="flex: 1; display: flex; flex-direction: column; overflow: hidden"

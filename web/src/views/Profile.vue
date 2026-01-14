@@ -36,6 +36,7 @@
     <a-modal
       v-model:open="showPasswordModal"
       title="Change Password"
+      :confirmLoading="loading"
       @ok="handleChangePassword"
     >
       <a-form layout="vertical">
@@ -57,10 +58,12 @@
 import { ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useAuthStore } from '../stores/auth'
+import { changePassword } from '../api/auth'
 
 const authStore = useAuthStore()
 
 const showPasswordModal = ref(false)
+const loading = ref(false)
 const passwordForm = ref({
   current: '',
   new: '',
@@ -72,12 +75,38 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleString()
 }
 
-const handleChangePassword = () => {
-  if (passwordForm.value.new !== passwordForm.value.confirm) {
-    message.error('Passwords do not match')
+const handleChangePassword = async () => {
+  if (!passwordForm.value.current || !passwordForm.value.new || !passwordForm.value.confirm) {
+    message.error('Please fill in all fields')
     return
   }
-  message.info('Password change functionality coming soon')
-  showPasswordModal.value = false
+
+  if (passwordForm.value.new !== passwordForm.value.confirm) {
+    message.error('New passwords do not match')
+    return
+  }
+
+  if (passwordForm.value.new.length < 6) {
+    message.error('New password must be at least 6 characters')
+    return
+  }
+
+  loading.value = true
+  try {
+    await changePassword(passwordForm.value.current, passwordForm.value.new)
+    message.success('Password changed successfully')
+    showPasswordModal.value = false
+    // Clear form
+    passwordForm.value = {
+      current: '',
+      new: '',
+      confirm: ''
+    }
+  } catch (error) {
+    // Error is handled by global interceptor
+    console.error('Password change failed:', error)
+  } finally {
+    loading.value = false
+  }
 }
 </script>

@@ -7,12 +7,17 @@ export const useThemeStore = defineStore('theme', {
     }),
 
     getters: {
-        themeAlgorithm: (state) => state.isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        themeAlgorithm: (state) => {
+            const algorithms = [state.isDark ? theme.darkAlgorithm : theme.defaultAlgorithm]
+            algorithms.push(theme.compactAlgorithm)
+            return algorithms
+        },
         themeToken: (state) => ({
             colorPrimary: '#1890ff',
             colorBgContainer: state.isDark ? '#1f1f1f' : '#ffffff',
             colorBgElevated: state.isDark ? '#1f1f1f' : '#ffffff',
             colorBorder: state.isDark ? '#303030' : '#d9d9d9',
+            borderRadius: 2, // Slightly more square for compact feel
         })
     },
 
