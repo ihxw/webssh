@@ -1,18 +1,18 @@
 <template>
   <div>
-    <a-card title="SSH Hosts" :bordered="false">
+    <a-card :title="t('nav.hosts')" :bordered="false">
       <template #extra>
         <a-space>
           <a-input-search
             v-model:value="searchText"
-            placeholder="Search hosts..."
+            :placeholder="t('host.searchPlaceholder')"
             style="width: 200px"
             size="small"
             @search="handleSearch"
           />
           <a-button type="primary" size="small" @click="handleAdd">
             <PlusOutlined />
-            Add Host
+            {{ t('host.addHost') }}
           </a-button>
         </a-space>
       </template>
@@ -29,19 +29,19 @@
             <a-space>
               <a-button size="small" @click="handleConnect(record)">
                 <LinkOutlined />
-                Connect
+                {{ t('terminal.connected') }}
               </a-button>
               <a-button size="small" @click="handleEdit(record)">
                 <EditOutlined />
-                Edit
+                {{ t('common.edit') }}
               </a-button>
               <a-popconfirm
-                title="Are you sure you want to delete this host?"
+                :title="t('host.deleteConfirm')"
                 @confirm="handleDelete(record.id)"
               >
                 <a-button size="small" danger>
                   <DeleteOutlined />
-                  Delete
+                  {{ t('common.delete') }}
                 </a-button>
               </a-popconfirm>
             </a-space>
@@ -53,51 +53,51 @@
     <!-- Edit/Add Host Modal -->
     <a-modal
       v-model:open="showModal"
-      :title="editingHost ? 'Edit SSH Host' : 'Add SSH Host'"
+      :title="editingHost ? t('host.editHost') : t('host.addHost')"
       @ok="handleSave"
       :confirmLoading="saving"
     >
       <a-form :model="hostForm" layout="vertical">
-        <a-form-item label="Name" required>
-          <a-input v-model:value="hostForm.name" placeholder="My Server" />
+        <a-form-item :label="t('host.name')" required>
+          <a-input v-model:value="hostForm.name" :placeholder="t('host.placeholderName')" />
         </a-form-item>
 
-        <a-form-item label="Host" required>
-          <a-input v-model:value="hostForm.host" placeholder="192.168.1.100" />
+        <a-form-item :label="t('host.host')" required>
+          <a-input v-model:value="hostForm.host" :placeholder="t('host.placeholderHost')" />
         </a-form-item>
 
-        <a-form-item label="Port">
+        <a-form-item :label="t('host.port')">
           <a-input-number v-model:value="hostForm.port" :min="1" :max="65535" style="width: 100%" />
         </a-form-item>
 
-        <a-form-item label="Username" required>
-          <a-input v-model:value="hostForm.username" placeholder="root" />
+        <a-form-item :label="t('host.username')" required>
+          <a-input v-model:value="hostForm.username" :placeholder="t('host.placeholderUsername')" />
         </a-form-item>
 
-        <a-form-item label="Authentication Type" required>
+        <a-form-item :label="t('host.authMethod')" required>
           <a-radio-group v-model:value="hostForm.auth_type">
-            <a-radio value="password">Password</a-radio>
-            <a-radio value="key">SSH Key</a-radio>
+            <a-radio value="password">{{ t('host.authPassword') }}</a-radio>
+            <a-radio value="key">{{ t('host.authKey') }}</a-radio>
           </a-radio-group>
         </a-form-item>
 
-        <a-form-item v-if="hostForm.auth_type === 'password'" label="Password" :required="!editingHost">
-          <a-input-password v-model:value="hostForm.password" :placeholder="editingHost ? 'Leave empty to keep current' : 'Enter password'" />
+        <a-form-item v-if="hostForm.auth_type === 'password'" :label="t('host.password')" :required="!editingHost">
+          <a-input-password v-model:value="hostForm.password" :placeholder="editingHost ? t('host.placeholderKeepPassword') : t('host.placeholderPassword')" />
         </a-form-item>
 
-        <a-form-item v-if="hostForm.auth_type === 'key'" label="Private Key" :required="!editingHost">
+        <a-form-item v-if="hostForm.auth_type === 'key'" :label="t('host.privateKey')" :required="!editingHost">
           <a-textarea
             v-model:value="hostForm.private_key"
-            :placeholder="editingHost ? 'Leave empty to keep current' : '-----BEGIN RSA PRIVATE KEY-----'"
+            :placeholder="editingHost ? t('host.placeholderKeepKey') : t('host.placeholderPrivateKey')"
             :rows="6"
           />
         </a-form-item>
 
-        <a-form-item label="Group">
-          <a-input v-model:value="hostForm.group_name" placeholder="Production" />
+        <a-form-item :label="t('host.group')">
+          <a-input v-model:value="hostForm.group_name" :placeholder="t('host.placeholderGroup')" />
         </a-form-item>
 
-        <a-form-item label="Description">
+        <a-form-item :label="t('host.description')">
           <a-textarea v-model:value="hostForm.description" :rows="3" />
         </a-form-item>
       </a-form>
@@ -106,7 +106,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
@@ -116,9 +116,11 @@ import {
   LinkOutlined
 } from '@ant-design/icons-vue'
 import { useSSHStore } from '../stores/ssh'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
 const sshStore = useSSHStore()
+const { t } = useI18n()
 
 const loading = ref(false)
 const searchText = ref('')
@@ -138,14 +140,14 @@ const hostForm = ref({
   description: ''
 })
 
-const columns = [
-  { title: 'Name', dataIndex: 'name', key: 'name' },
-  { title: 'Host', dataIndex: 'host', key: 'host' },
-  { title: 'Port', dataIndex: 'port', key: 'port' },
-  { title: 'Username', dataIndex: 'username', key: 'username' },
-  { title: 'Group', dataIndex: 'group_name', key: 'group_name' },
-  { title: 'Action', key: 'action', width: 250 }
-]
+const columns = computed(() => [
+  { title: t('host.name'), dataIndex: 'name', key: 'name' },
+  { title: t('host.host'), dataIndex: 'host', key: 'host' },
+  { title: t('host.port'), dataIndex: 'port', key: 'port' },
+  { title: t('host.username'), dataIndex: 'username', key: 'username' },
+  { title: t('host.group'), dataIndex: 'group_name', key: 'group_name' },
+  { title: t('common.edit'), key: 'action', width: 250 }
+])
 
 onMounted(async () => {
   await loadHosts()
@@ -156,7 +158,7 @@ const loadHosts = async () => {
   try {
     await sshStore.fetchHosts()
   } catch (error) {
-    message.error('Failed to load hosts')
+    message.error(t('host.failLoad'))
   } finally {
     loading.value = false
   }
@@ -211,23 +213,23 @@ const handleEdit = async (host) => {
       description: fullHost.description || ''
     }
   } catch (error) {
-    message.error('Failed to load host details')
+    message.error(t('host.failLoad'))
   }
 }
 
 const handleSave = async () => {
   if (!hostForm.value.name || !hostForm.value.host || !hostForm.value.username) {
-    message.error('Please fill in all required fields')
+    message.error(t('host.validationRequired'))
     return
   }
 
   if (!editingHost.value) {
     if (hostForm.value.auth_type === 'password' && !hostForm.value.password) {
-      message.error('Please enter password')
+      message.error(t('host.validationPassword'))
       return
     }
     if (hostForm.value.auth_type === 'key' && !hostForm.value.private_key) {
-      message.error('Please enter private key')
+      message.error(t('host.validationKey'))
       return
     }
   }
@@ -240,15 +242,15 @@ const handleSave = async () => {
       if (!updateData.private_key) delete updateData.private_key
       
       await sshStore.modifyHost(editingHost.value.id, updateData)
-      message.success('Host updated successfully')
+      message.success(t('host.successUpdate'))
     } else {
       await sshStore.addHost(hostForm.value)
-      message.success('Host added successfully')
+      message.success(t('host.successAdd'))
     }
     showModal.value = false
     await loadHosts()
   } catch (error) {
-    message.error(editingHost.value ? 'Failed to update host' : 'Failed to add host')
+    message.error(editingHost.value ? t('host.failUpdate') : t('host.failAdd'))
   } finally {
     saving.value = false
   }
@@ -257,9 +259,9 @@ const handleSave = async () => {
 const handleDelete = async (id) => {
   try {
     await sshStore.removeHost(id)
-    message.success('Host deleted successfully')
+    message.success(t('host.hostDeleted'))
   } catch (error) {
-    message.error('Failed to delete host')
+    message.error(t('common.error'))
   }
 }
 </script>

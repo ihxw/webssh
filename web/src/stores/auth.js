@@ -5,6 +5,7 @@ export const useAuthStore = defineStore('auth', {
     state: () => ({
         user: null,
         token: localStorage.getItem('token') || null,
+        refreshToken: localStorage.getItem('refresh_token') || null,
     }),
 
     getters: {
@@ -17,10 +18,14 @@ export const useAuthStore = defineStore('auth', {
             try {
                 const response = await apiLogin(username, password, remember)
                 this.token = response.token
+                this.refreshToken = response.refresh_token
                 this.user = response.user
 
                 // Store token in localStorage
                 localStorage.setItem('token', response.token)
+                if (response.refresh_token) {
+                    localStorage.setItem('refresh_token', response.refresh_token)
+                }
 
                 return response
             } catch (error) {
@@ -32,11 +37,9 @@ export const useAuthStore = defineStore('auth', {
             try {
                 await apiLogout()
             } catch (error) {
-                console.error('Logout error:', error)
+                // console.error('Logout error:', error)
             } finally {
-                this.token = null
-                this.user = null
-                localStorage.removeItem('token')
+                this.clearAuth()
             }
         },
 
@@ -47,9 +50,7 @@ export const useAuthStore = defineStore('auth', {
                 return user
             } catch (error) {
                 // Token invalid, clear auth state
-                this.token = null
-                this.user = null
-                localStorage.removeItem('token')
+                // this.clearAuth() // Don't clear immediately, let interceptor handle refresh
                 throw error
             }
         },
@@ -59,14 +60,21 @@ export const useAuthStore = defineStore('auth', {
             localStorage.setItem('token', token)
         },
 
+        setRefreshToken(token) {
+            this.refreshToken = token
+            localStorage.setItem('refresh_token', token)
+        },
+
         setUser(user) {
             this.user = user
         },
 
         clearAuth() {
             this.token = null
+            this.refreshToken = null
             this.user = null
             localStorage.removeItem('token')
+            localStorage.removeItem('refresh_token')
         }
     }
 })

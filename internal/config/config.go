@@ -27,9 +27,11 @@ type DatabaseConfig struct {
 }
 
 type SecurityConfig struct {
-	JWTSecret      string `mapstructure:"jwt_secret"`
-	EncryptionKey  string `mapstructure:"encryption_key"`
-	LoginRateLimit int    `mapstructure:"login_rate_limit"`
+	JWTSecret         string `mapstructure:"jwt_secret"`
+	EncryptionKey     string `mapstructure:"encryption_key"`
+	LoginRateLimit    int    `mapstructure:"login_rate_limit"`
+	AccessExpiration  string `mapstructure:"access_expiration"`
+	RefreshExpiration string `mapstructure:"refresh_expiration"`
 }
 
 type SSHConfig struct {
@@ -58,6 +60,8 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("ssh.idle_timeout", "30m")
 	viper.SetDefault("ssh.max_connections_per_user", 10)
 	viper.SetDefault("security.login_rate_limit", 20)
+	viper.SetDefault("security.access_expiration", "15m")
+	viper.SetDefault("security.refresh_expiration", "168h") // 7 days
 	viper.SetDefault("log.level", "info")
 	viper.SetDefault("log.file", "./logs/app.log")
 
@@ -115,6 +119,8 @@ func (c *Config) SaveConfig() error {
 	viper.Set("security.jwt_secret", c.Security.JWTSecret)
 	viper.Set("security.encryption_key", c.Security.EncryptionKey)
 	viper.Set("security.login_rate_limit", c.Security.LoginRateLimit)
+	viper.Set("security.access_expiration", c.Security.AccessExpiration)
+	viper.Set("security.refresh_expiration", c.Security.RefreshExpiration)
 	viper.Set("ssh.timeout", c.SSH.Timeout)
 	viper.Set("ssh.idle_timeout", c.SSH.IdleTimeout)
 	viper.Set("ssh.max_connections_per_user", c.SSH.MaxConnectionsPerUser)

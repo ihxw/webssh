@@ -65,7 +65,12 @@ export default {
         connected: '已连接',
         disconnected: '已断开',
         connectionFailed: '连接失败',
-        recording: '录制中'
+        recording: '录制中',
+        hostAlreadyConnected: '主机已连接',
+        sessionAlreadyOpen: '主机 "{name}" 的会话已打开。您想切换到现有标签页还是打开新标签页？',
+        quickConnectSession: '快速连接会话',
+        temporaryGroup: '临时',
+        onetimeSession: '一次性会话'
     },
     host: {
         name: '名称',
@@ -86,7 +91,26 @@ export default {
         duplicateConnection: '已存在连接',
         duplicateMessage: '该主机已在标签页中打开',
         switchToExisting: '切换到已有',
-        openNew: '打开新连接'
+        openNew: '打开新连接',
+        group: '分组',
+        description: '描述',
+        placeholderName: '我的服务器',
+        placeholderHost: '192.168.1.100',
+        placeholderUsername: 'root',
+        placeholderPassword: '请输入密码',
+        placeholderKeepPassword: '留空以保持当前密码',
+        placeholderPrivateKey: '-----BEGIN RSA PRIVATE KEY-----',
+        placeholderKeepKey: '留空以保持当前密钥',
+        placeholderGroup: '生产环境',
+        validationRequired: '请填写所有必填字段',
+        validationPassword: '请输入密码',
+        validationKey: '请输入私钥',
+        successUpdate: '主机更新成功',
+        successAdd: '主机添加成功',
+        failUpdate: '更新主机失败',
+        failAdd: '添加主机失败',
+        failLoad: '加载主机列表失败',
+        searchPlaceholder: '搜索主机...'
     },
     history: {
         title: '连接历史',

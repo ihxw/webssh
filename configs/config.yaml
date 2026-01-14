@@ -23,6 +23,12 @@ security:
   # 登录频率限制 (每分钟允许的尝试次数)
   login_rate_limit: 20
 
+  # Access Token 有效期 (默认 15m)
+  access_expiration: 15m
+  
+  # Refresh Token 有效期 (默认 168h = 7天)
+  refresh_expiration: 168h
+
 ssh:
   # SSH 连接建立超时时间
   timeout: 30s

@@ -65,7 +65,12 @@ export default {
         connected: 'Connected',
         disconnected: 'Disconnected',
         connectionFailed: 'Connection failed',
-        recording: 'Recording'
+        recording: 'Recording',
+        hostAlreadyConnected: 'Host Already Connected',
+        sessionAlreadyOpen: 'A session for "{name}" is already open. Would you like to switch to the existing tab or open a new one?',
+        quickConnectSession: 'Quick Connect Session',
+        temporaryGroup: 'Temporary',
+        onetimeSession: 'One-time session'
     },
     host: {
         name: 'Name',
@@ -86,7 +91,26 @@ export default {
         duplicateConnection: 'Duplicate Connection',
         duplicateMessage: 'This host is already open in a tab',
         switchToExisting: 'Switch to Existing',
-        openNew: 'Open New'
+        openNew: 'Open New',
+        group: 'Group',
+        description: 'Description',
+        placeholderName: 'My Server',
+        placeholderHost: '192.168.1.100',
+        placeholderUsername: 'root',
+        placeholderPassword: 'Enter password',
+        placeholderKeepPassword: 'Leave empty to keep current password',
+        placeholderPrivateKey: '-----BEGIN RSA PRIVATE KEY-----',
+        placeholderKeepKey: 'Leave empty to keep current key',
+        placeholderGroup: 'Production',
+        validationRequired: 'Please fill in all required fields',
+        validationPassword: 'Please enter password',
+        validationKey: 'Please enter private key',
+        successUpdate: 'Host updated successfully',
+        successAdd: 'Host added successfully',
+        failUpdate: 'Failed to update host',
+        failAdd: 'Failed to add host',
+        failLoad: 'Failed to load SSH hosts',
+        searchPlaceholder: 'Search hosts...'
     },
     history: {
         title: 'Connection History',

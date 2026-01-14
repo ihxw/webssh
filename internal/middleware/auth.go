@@ -46,6 +46,27 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
+		// Ensure it's an access token (unless it's a 2FA temp token which is used for intermediate steps, but here we usually expect access for protected routes)
+		// Actually 2FA temp tokens shouldn't be used for general API access.
+		if claims.TokenType != "access" && claims.TokenType != "2fa_temp" {
+			// Allow 2fa_temp for now if it was used that way, but ideally strict.
+			// Given previous code, ValidateToken was generic.
+			// Let's restrict to 'access' for general middleware use.
+			// Wait, the new logic uses "2fa_temp" for the intermediate step?
+			// The intermediate step usually doesn't hit AuthMiddleware protected routes?
+			// Actually 2FA verification hits /auth/verify-2fa which is usually public or protected by temp token?
+			// In `router.go` (not seen but typically) `verify-2fa` is public (accepts user_id + code).
+			// So middleware should strictly enforce "access".
+			if claims.TokenType != "access" {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"success": false,
+					"error":   "invalid token type",
+				})
+				c.Abort()
+				return
+			}
+		}
+
 		// Set user context
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)

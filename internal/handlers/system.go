@@ -126,6 +126,8 @@ func (h *SystemHandler) GetSettings(c *gin.Context) {
 		"idle_timeout":             h.config.SSH.IdleTimeout,
 		"max_connections_per_user": h.config.SSH.MaxConnectionsPerUser,
 		"login_rate_limit":         h.config.Security.LoginRateLimit,
+		"access_expiration":        h.config.Security.AccessExpiration,
+		"refresh_expiration":       h.config.Security.RefreshExpiration,
 	})
 }
 
@@ -135,6 +137,8 @@ type UpdateSettingsRequest struct {
 	IdleTimeout           string `json:"idle_timeout" binding:"required"`
 	MaxConnectionsPerUser int    `json:"max_connections_per_user" binding:"required"`
 	LoginRateLimit        int    `json:"login_rate_limit" binding:"required"`
+	AccessExpiration      string `json:"access_expiration" binding:"required"`
+	RefreshExpiration     string `json:"refresh_expiration" binding:"required"`
 }
 
 // Global rate limiter reference for dynamic updates
@@ -153,6 +157,8 @@ func (h *SystemHandler) UpdateSettings(c *gin.Context) {
 	h.config.SSH.IdleTimeout = req.IdleTimeout
 	h.config.SSH.MaxConnectionsPerUser = req.MaxConnectionsPerUser
 	h.config.Security.LoginRateLimit = req.LoginRateLimit
+	h.config.Security.AccessExpiration = req.AccessExpiration
+	h.config.Security.RefreshExpiration = req.RefreshExpiration
 
 	// Save to file
 	if err := h.config.SaveConfig(); err != nil {

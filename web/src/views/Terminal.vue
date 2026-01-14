@@ -5,7 +5,7 @@
         <div style="display: flex; align-items: center; gap: 12px">
           <a-select
             v-model:value="selectedHostId"
-            placeholder="Select a host"
+            :placeholder="t('terminal.selectHost')"
             style="width: 300px"
             size="small"
             :loading="loading"
@@ -23,19 +23,19 @@
 
           <a-button type="primary" size="small" @click="handleAddHost">
             <PlusOutlined />
-            New Host
+            {{ t('terminal.newHost') }}
           </a-button>
 
           <a-button size="small" @click="handleQuickConnect">
             <ThunderboltOutlined />
-            Quick Connect
+            {{ t('terminal.quickConnect') }}
           </a-button>
 
           <a-divider type="vertical" />
           
           <div style="display: flex; align-items: center; gap: 4px; border: 1px solid #d9d9d9; padding: 0 8px; border-radius: 4px; background: rgba(0,0,0,0.02); height: 24px">
             <VideoCameraOutlined :style="{ color: isRecordingEnabled ? '#ff4d4f' : '#8c8c8c' }" />
-            <span style="font-size: 12px; color: #595959">Record Next Session</span>
+            <span style="font-size: 12px; color: #595959">{{ t('terminal.recordNextSession') }}</span>
             <a-switch v-model:checked="isRecordingEnabled" size="small" />
           </div>
         </div>
@@ -78,10 +78,10 @@
         </a-tabs>
 
         <div v-else style="flex: 1; display: flex; align-items: center; justify-content: center">
-          <a-empty description="No active terminals">
+          <a-empty :description="t('terminal.noActiveTerminals')">
             <a-button type="primary" @click="handleQuickConnect">
               <PlusOutlined />
-              Connect to SSH Host
+              {{ t('terminal.connectToHost') }}
             </a-button>
           </a-empty>
         </div>
@@ -91,51 +91,51 @@
     <!-- Host Form Modal -->
     <a-modal
       v-model:open="showHostModal"
-      :title="editingHost ? 'Edit SSH Host' : (isQuickConnect ? 'Quick Connect' : 'Add SSH Host')"
+      :title="editingHost ? t('host.editHost') : (isQuickConnect ? t('terminal.quickConnect') : t('host.addHost'))"
       @ok="handleSaveHost"
       :confirmLoading="saving"
     >
       <a-form :model="hostForm" layout="vertical">
-        <a-form-item label="Name" required>
-          <a-input v-model:value="hostForm.name" placeholder="My Server" />
+        <a-form-item :label="t('host.name')" required>
+          <a-input v-model:value="hostForm.name" :placeholder="t('host.placeholderName')" />
         </a-form-item>
 
-        <a-form-item label="Host" required>
-          <a-input v-model:value="hostForm.host" placeholder="192.168.1.100" />
+        <a-form-item :label="t('host.host')" required>
+          <a-input v-model:value="hostForm.host" :placeholder="t('host.placeholderHost')" />
         </a-form-item>
 
-        <a-form-item label="Port">
+        <a-form-item :label="t('host.port')">
           <a-input-number v-model:value="hostForm.port" :min="1" :max="65535" style="width: 100%" />
         </a-form-item>
 
-        <a-form-item label="Username" required>
-          <a-input v-model:value="hostForm.username" placeholder="root" />
+        <a-form-item :label="t('host.username')" required>
+          <a-input v-model:value="hostForm.username" :placeholder="t('host.placeholderUsername')" />
         </a-form-item>
 
-        <a-form-item label="Authentication Type" required>
+        <a-form-item :label="t('host.authMethod')" required>
           <a-radio-group v-model:value="hostForm.auth_type">
-            <a-radio value="password">Password</a-radio>
-            <a-radio value="key">SSH Key</a-radio>
+            <a-radio value="password">{{ t('host.authPassword') }}</a-radio>
+            <a-radio value="key">{{ t('host.authKey') }}</a-radio>
           </a-radio-group>
         </a-form-item>
 
-        <a-form-item v-if="hostForm.auth_type === 'password'" label="Password" :required="!editingHost">
-          <a-input-password v-model:value="hostForm.password" :placeholder="editingHost ? 'Leave empty to keep current password' : 'Enter password'" />
+        <a-form-item v-if="hostForm.auth_type === 'password'" :label="t('host.password')" :required="!editingHost">
+          <a-input-password v-model:value="hostForm.password" :placeholder="editingHost ? t('host.placeholderKeepPassword') : t('host.placeholderPassword')" />
         </a-form-item>
 
-        <a-form-item v-if="hostForm.auth_type === 'key'" label="Private Key" :required="!editingHost">
+        <a-form-item v-if="hostForm.auth_type === 'key'" :label="t('host.privateKey')" :required="!editingHost">
           <a-textarea
             v-model:value="hostForm.private_key"
-            :placeholder="editingHost ? 'Leave empty to keep current key' : '-----BEGIN RSA PRIVATE KEY-----'"
+            :placeholder="editingHost ? t('host.placeholderKeepKey') : t('host.placeholderPrivateKey')"
             :rows="6"
           />
         </a-form-item>
 
-        <a-form-item label="Group">
-          <a-input v-model:value="hostForm.group_name" placeholder="Production" />
+        <a-form-item :label="t('host.group')">
+          <a-input v-model:value="hostForm.group_name" :placeholder="t('host.placeholderGroup')" />
         </a-form-item>
 
-        <a-form-item label="Description">
+        <a-form-item :label="t('host.description')">
           <a-textarea v-model:value="hostForm.description" :rows="3" />
         </a-form-item>
       </a-form>
@@ -160,8 +160,10 @@ import {
   VideoCameraOutlined
 } from '@ant-design/icons-vue'
 import { useSSHStore } from '../stores/ssh'
+import { useI18n } from 'vue-i18n'
 import TerminalComponent from '../components/Terminal.vue'
 
+const { t } = useI18n()
 const sshStore = useSSHStore()
 
 const selectedHostId = ref(null)
@@ -190,7 +192,7 @@ onMounted(async () => {
   try {
     await sshStore.fetchHosts()
   } catch (error) {
-    message.error('Failed to load SSH hosts')
+    message.error(t('host.failLoad'))
   } finally {
     loading.value = false
   }
@@ -206,11 +208,11 @@ const handleHostSelect = (hostId) => {
     
     if (existingTerminal) {
       Modal.confirm({
-        title: 'Host Already Connected',
+        title: t('terminal.hostAlreadyConnected'),
         icon: createVNode(ExclamationCircleOutlined),
-        content: `A session for "${host.name}" is already open. Would you like to switch to the existing tab or open a new one?`,
-        okText: 'Switch to Existing',
-        cancelText: 'Open New',
+        content: t('terminal.sessionAlreadyOpen', { name: host.name }),
+        okText: t('host.switchToExisting'),
+        cancelText: t('host.openNew'),
         onOk() {
           activeTerminalKey.value = existingTerminal.id
           selectedHostId.value = null
@@ -260,33 +262,33 @@ const handleQuickConnect = () => {
   isQuickConnect.value = true
   showHostModal.value = true
   hostForm.value = {
-    name: 'Quick Connect Session',
+    name: t('terminal.quickConnectSession'),
     host: '',
     port: 22,
     username: 'root',
     auth_type: 'password',
     password: '',
     private_key: '',
-    group_name: 'Temporary',
-    description: 'One-time session'
+    group_name: t('terminal.temporaryGroup'),
+    description: t('terminal.onetimeSession')
   }
 }
 
 const handleSaveHost = async () => {
   if (!hostForm.value.name || !hostForm.value.host || !hostForm.value.username) {
-    message.error('Please fill in all required fields')
+    message.error(t('host.validationRequired'))
     return
   }
 
   if (!editingHost.value) {
     // Adding new host
     if (hostForm.value.auth_type === 'password' && !hostForm.value.password) {
-      message.error('Please enter password')
+      message.error(t('host.validationPassword'))
       return
     }
 
     if (hostForm.value.auth_type === 'key' && !hostForm.value.private_key) {
-      message.error('Please enter private key')
+      message.error(t('host.validationKey'))
       return
     }
   }
@@ -301,11 +303,11 @@ const handleSaveHost = async () => {
       if (!updateData.private_key) delete updateData.private_key
       
       await sshStore.modifyHost(editingHost.value.id, updateData)
-      message.success('Host updated successfully')
+      message.success(t('host.successUpdate'))
     } else {
       // Add new host
       const host = await sshStore.addHost(hostForm.value)
-      message.success('Host added successfully')
+      message.success(t('host.successAdd'))
       
       // Connect to the newly added host
       connectToHost(host)
@@ -313,7 +315,7 @@ const handleSaveHost = async () => {
     
     showHostModal.value = false
   } catch (error) {
-    message.error(editingHost.value ? 'Failed to update host' : 'Failed to add host')
+    message.error(editingHost.value ? t('host.failUpdate') : t('host.failAdd'))
   } finally {
     saving.value = false
   }

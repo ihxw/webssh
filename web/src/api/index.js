@@ -23,6 +23,20 @@ api.interceptors.request.use(
 )
 
 // Response interceptor
+let isRefreshing = false
+let requestsQueue = []
+
+const processQueue = (error, token = null) => {
+    requestsQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error)
+        } else {
+            prom.resolve(token)
+        }
+    })
+    requestsQueue = []
+}
+
 api.interceptors.response.use(
     (response) => {
         // Return data directly if success
@@ -31,7 +45,7 @@ api.interceptors.response.use(
         }
         return response.data
     },
-    (error) => {
+    async (error) => {
         // Extract error message
         let errorMessage = 'Request failed'
         if (error.response && error.response.data && error.response.data.error) {
@@ -40,22 +54,81 @@ api.interceptors.response.use(
             errorMessage = error.message
         }
 
+        const originalRequest = error.config
+
         // Handle errors
         if (error.response) {
-            const { status, config } = error.response
+            const { status } = error.response
 
-            if (status === 401) {
-                // If we are already on the login page or trying to login, just show the error
-                const isLoginRequest = config.url.includes('/auth/login')
-                const isLoginPage = window.location.pathname === '/login' || window.location.hash === '#/login'
-
-                if (isLoginRequest) {
-                    message.error(errorMessage || 'Invalid username or password')
-                } else {
+            // 401 Unauthorized
+            if (status === 401 && !originalRequest._retry) {
+                if (originalRequest.url.includes('/auth/login') || originalRequest.url.includes('/auth/refresh')) {
+                    // Login failed or Refresh failed -> Logout
                     localStorage.removeItem('token')
-                    if (!isLoginPage) {
+                    localStorage.removeItem('refresh_token')
+                    if (!window.location.pathname.includes('/login')) {
                         message.error('Session expired, please login again')
-                        // We use href to force a clean state redirect for session expiration
+                        window.location.href = '/login'
+                    }
+                    return Promise.reject(error)
+                }
+
+                // Try to refresh token
+                const refreshToken = localStorage.getItem('refresh_token')
+                if (refreshToken) {
+                    if (isRefreshing) {
+                        // If already refreshing, queue this request
+                        return new Promise((resolve, reject) => {
+                            requestsQueue.push({ resolve, reject })
+                        }).then(token => {
+                            originalRequest.headers.Authorization = `Bearer ${token}`
+                            return api(originalRequest)
+                        }).catch(err => {
+                            return Promise.reject(err)
+                        })
+                    }
+
+                    originalRequest._retry = true
+                    isRefreshing = true
+
+                    try {
+                        // Call refresh directly using axios to avoid circular dependency or interceptor loops
+                        // But we want to use the same baseURL
+                        const response = await axios.post('/api/auth/refresh', { refresh_token: refreshToken })
+
+                        if (response.data.success) {
+                            const newToken = response.data.data.token
+                            localStorage.setItem('token', newToken)
+
+                            // Also update store if possible, but here we just update localStorage
+                            // The store will read from localStorage on reload, or we rely on the fact that we use localStorage in requests
+                            // Ideally we'd access the store, but preventing circular deps is safer here.
+                            // Since the header is set from localStorage in request interceptor:
+                            // const token = localStorage.getItem('token') <- this will pick up new token next time
+                            // But for THIS retry, we must set it manually
+
+                            api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+                            originalRequest.headers.Authorization = `Bearer ${newToken}`
+
+                            processQueue(null, newToken)
+                            return api(originalRequest)
+                        } else {
+                            throw new Error('Refresh failed')
+                        }
+                    } catch (refreshError) {
+                        processQueue(refreshError, null)
+                        localStorage.removeItem('token')
+                        localStorage.removeItem('refresh_token')
+                        window.location.href = '/login'
+                        return Promise.reject(refreshError)
+                    } finally {
+                        isRefreshing = false
+                    }
+                } else {
+                    // No refresh token -> Logout
+                    localStorage.removeItem('token')
+                    if (!window.location.pathname.includes('/login')) {
+                        message.error('Session expired, please login again')
                         window.location.href = '/login'
                     }
                 }

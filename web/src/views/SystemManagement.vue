@@ -58,6 +58,16 @@
                 <a-input-number v-model:value="settingsForm.login_rate_limit" :min="1" style="width: 100%" />
               </a-form-item>
             </a-col>
+            <a-col :span="8">
+              <a-form-item :label="t('system.accessExpiration')" name="access_expiration">
+                <a-input v-model:value="settingsForm.access_expiration" placeholder="15m" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item :label="t('system.refreshExpiration')" name="refresh_expiration">
+                <a-input v-model:value="settingsForm.refresh_expiration" placeholder="168h" />
+              </a-form-item>
+            </a-col>
           </a-row>
           <a-form-item>
             <a-button type="primary" :loading="settingsLoading" html-type="submit">
@@ -88,7 +98,9 @@ const settingsForm = reactive({
   ssh_timeout: '30s',
   idle_timeout: '30m',
   max_connections_per_user: 10,
-  login_rate_limit: 20
+  login_rate_limit: 20,
+  access_expiration: '15m',
+  refresh_expiration: '168h'
 })
 
 const fetchSettings = async () => {

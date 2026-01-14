@@ -39,8 +39,37 @@ type ChangePasswordRequest struct {
 }
 
 type LoginResponse struct {
-	Token string       `json:"token"`
-	User  *models.User `json:"user"`
+	Token        string       `json:"token"`
+	RefreshToken string       `json:"refresh_token"`
+	User         *models.User `json:"user"`
+}
+
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+func (h *AuthHandler) generateTokens(user *models.User) (string, string, error) {
+	accessExp, err := time.ParseDuration(h.config.Security.AccessExpiration)
+	if err != nil {
+		accessExp = 15 * time.Minute
+	}
+
+	refreshExp, err := time.ParseDuration(h.config.Security.RefreshExpiration)
+	if err != nil {
+		refreshExp = 168 * time.Hour // 7 days
+	}
+
+	accessToken, err := utils.GenerateToken(user.ID, user.Username, user.Role, "access", accessExp, h.config.Security.JWTSecret)
+	if err != nil {
+		return "", "", err
+	}
+
+	refreshToken, err := utils.GenerateToken(user.ID, user.Username, user.Role, "refresh", refreshExp, h.config.Security.JWTSecret)
+	if err != nil {
+		return "", "", err
+	}
+
+	return accessToken, refreshToken, nil
 }
 
 // Login handles user login
@@ -55,10 +84,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var user models.User
 	result := h.db.Where("username = ? OR email = ?", req.Username, req.Username).First(&user)
 	if result.Error != nil {
-		// Mitigate username enumeration: perform a dummy password check to make timing consistent
-		// Use a random hash or a pre-calculated dummy hash
+		// Mitigate username enumeration
 		bcrypt.CompareHashAndPassword([]byte("$2a$10$X7...dummyhash..."), []byte(req.Password))
-
 		utils.ErrorResponse(c, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
@@ -77,14 +104,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// Check if 2FA is enabled
 	if user.TwoFactorEnabled {
-		// Generate a temporary token for 2FA verification
-		tempToken, err := utils.GenerateToken(user.ID, user.Username, user.Role, h.config.Security.JWTSecret)
+		// Generate a temporary token for 2FA verification (short lived, e.g. 5 mins)
+		tempToken, err := utils.GenerateToken(user.ID, user.Username, user.Role, "2fa_temp", 5*time.Minute, h.config.Security.JWTSecret)
 		if err != nil {
 			utils.ErrorResponse(c, http.StatusInternalServerError, "failed to generate token")
 			return
 		}
 
-		// Return response indicating 2FA is required
 		utils.SuccessResponse(c, http.StatusOK, gin.H{
 			"requires_2fa": true,
 			"temp_token":   tempToken,
@@ -93,10 +119,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Generate JWT token
-	token, err := utils.GenerateToken(user.ID, user.Username, user.Role, h.config.Security.JWTSecret)
+	accessToken, refreshToken, err := h.generateTokens(&user)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to generate token")
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to generate tokens")
 		return
 	}
 
@@ -105,17 +130,59 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	user.LastLoginAt = &now
 	h.db.Save(&user)
 
-	// Return response
 	utils.SuccessResponse(c, http.StatusOK, LoginResponse{
-		Token: token,
-		User:  &user,
+		Token:        accessToken,
+		RefreshToken: refreshToken,
+		User:         &user,
+	})
+}
+
+// RefreshToken handles token refresh
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	var req RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid request: "+err.Error())
+		return
+	}
+
+	claims, err := utils.ValidateToken(req.RefreshToken, h.config.Security.JWTSecret)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "invalid refresh token")
+		return
+	}
+
+	if claims.TokenType != "refresh" {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "invalid token type")
+		return
+	}
+
+	// Check if user still exists and is active
+	var user models.User
+	if err := h.db.First(&user, claims.UserID).Error; err != nil || !user.IsActive() {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "user invalid")
+		return
+	}
+
+	// Generate new access token
+	accessExp, err := time.ParseDuration(h.config.Security.AccessExpiration)
+	if err != nil {
+		accessExp = 15 * time.Minute
+	}
+
+	accessToken, err := utils.GenerateToken(user.ID, user.Username, user.Role, "access", accessExp, h.config.Security.JWTSecret)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to generate token")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, gin.H{
+		"token": accessToken,
 	})
 }
 
 // Logout handles user logout
 func (h *AuthHandler) Logout(c *gin.Context) {
 	// In a stateless JWT system, logout is handled client-side
-	// If implementing token blacklist, add logic here
 	utils.SuccessResponse(c, http.StatusOK, gin.H{
 		"message": "logged out successfully",
 	})
@@ -191,10 +258,9 @@ func (h *AuthHandler) Verify2FALogin(c *gin.Context) {
 		user.BackupCodes = newEncryptedCodes
 	}
 
-	// Generate final JWT token
-	token, err := utils.GenerateToken(user.ID, user.Username, user.Role, h.config.Security.JWTSecret)
+	accessToken, refreshToken, err := h.generateTokens(&user)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to generate token")
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to generate tokens")
 		return
 	}
 
@@ -205,8 +271,9 @@ func (h *AuthHandler) Verify2FALogin(c *gin.Context) {
 
 	// Return response
 	utils.SuccessResponse(c, http.StatusOK, LoginResponse{
-		Token: token,
-		User:  &user,
+		Token:        accessToken,
+		RefreshToken: refreshToken,
+		User:         &user,
 	})
 }
 

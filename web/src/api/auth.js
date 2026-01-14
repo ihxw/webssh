@@ -19,3 +19,7 @@ export const getWSTicket = async () => {
 export const changePassword = async (currentPassword, newPassword) => {
     return await api.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword })
 }
+
+export const refreshToken = async (token) => {
+    return await api.post('/auth/refresh', { refresh_token: token })
+}
