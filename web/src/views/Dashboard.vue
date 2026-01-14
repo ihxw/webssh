@@ -18,33 +18,37 @@
           >
             <a-menu-item key="Terminal">
               <CodeOutlined />
-              Terminal
+              {{ t('nav.terminal') }}
             </a-menu-item>
             <a-menu-item key="HostManagement">
               <DatabaseOutlined />
-              Hosts
+              {{ t('nav.hosts') }}
             </a-menu-item>
             <a-menu-item key="ConnectionHistory">
               <HistoryOutlined />
-              <span>History</span>
+              {{ t('nav.history') }}
             </a-menu-item>
             <a-menu-item key="CommandManagement">
               <ThunderboltOutlined />
-              <span>Commands</span>
+              {{ t('nav.commands') }}
             </a-menu-item>
             <a-menu-item key="RecordingManagement">
               <VideoCameraOutlined />
-              <span>Recordings</span>
+              {{ t('nav.recordings') }}
             </a-menu-item>
             <a-menu-item v-if="authStore.user?.role === 'admin'" key="UserManagement">
               <TeamOutlined />
-              Users
+              {{ t('nav.users') }}
             </a-menu-item>
           </a-menu>
 
           <div style="display: flex; align-items: center; gap: 16px">
+            <a-button size="small" @click="localeStore.toggleLocale">
+              {{ localeStore.isZhCN ? 'EN' : '中' }}
+            </a-button>
+            
             <a-button size="small" @click="themeStore.toggleTheme" :icon="themeStore.isDark ? h(BulbOutlined) : h(BulbFilled)">
-              {{ themeStore.isDark ? '浅色' : '深色' }}
+              {{ t(themeStore.isDark ? 'theme.light' : 'theme.dark') }}
             </a-button>
 
             <a-dropdown>
@@ -57,12 +61,12 @@
                 <a-menu>
                   <a-menu-item key="profile" @click="router.push('/dashboard/profile')">
                     <UserOutlined />
-                    Profile
+                    {{ t('nav.profile') }}
                   </a-menu-item>
                   <a-menu-divider />
                   <a-menu-item key="logout" @click="handleLogout">
                     <LogoutOutlined />
-                    Logout
+                    {{ t('nav.logout') }}
                   </a-menu-item>
                 </a-menu>
               </template>
@@ -85,6 +89,7 @@
 <script setup>
 import { ref, watch, h, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   CodeOutlined,
   DatabaseOutlined,
@@ -100,11 +105,15 @@ import {
 } from '@ant-design/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
+import { useLocaleStore } from '../stores/locale'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+const localeStore = useLocaleStore()
 
 const selectedKeys = ref(['Terminal'])
 

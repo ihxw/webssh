@@ -1,5 +1,5 @@
 # WebSSH
-
+本项目代码全部由AI编写，后续bug也由AI修复.  
 A modern, web-based SSH terminal designed for simplicity, security, and power.
 
 ## Features
