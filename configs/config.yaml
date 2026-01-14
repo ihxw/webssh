@@ -27,7 +27,7 @@ security:
   access_expiration: 15m
   
   # Refresh Token 有效期 (默认 168h = 7天)
-  refresh_expiration: 168h
+  refresh_expiration: 24h
 
 ssh:
   # SSH 连接建立超时时间
