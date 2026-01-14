@@ -245,6 +245,10 @@ onMounted(loadRecordings)
   text-align: right;
 }
 
+.dark-theme .time-display {
+  color: #bbb;
+}
+
 :deep(.xterm-viewport) {
     overflow-y: hidden !important;
 }

@@ -153,13 +153,22 @@ onMounted(loadTemplates)
 }
 
 code {
-  background: #f5f5f5;
-  padding: 2px 4px;
+  padding: 2px 6px;
   border-radius: 4px;
-  font-family: monospace;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
 }
 
-[data-theme='dark'] code {
-  background: #333;
+/* Light theme code style */
+.light-theme code {
+  background: #f0f0f0;
+  color: #c41d7f; /* Standard code color in light mode */
+}
+
+/* Dark theme code style */
+.dark-theme code {
+  background: #262626;
+  color: #ff7875; /* Brighter color for visibility in dark mode */
+  border: 1px solid #434343;
 }
 </style>

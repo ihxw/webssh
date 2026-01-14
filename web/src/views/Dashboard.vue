@@ -73,7 +73,11 @@
       </a-layout-header>
 
       <a-layout-content :style="{ background: themeStore.isDark ? '#141414' : '#f0f2f5' }">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <keep-alive include="Terminal">
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
       </a-layout-content>
     </a-layout>
   </a-config-provider>

@@ -127,6 +127,12 @@
   </div>
 </template>
 
+<script>
+export default {
+  name: 'Terminal'
+}
+</script>
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'

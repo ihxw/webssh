@@ -60,7 +60,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, onActivated, nextTick, watch } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { WebLinksAddon } from 'xterm-addon-web-links'
@@ -106,6 +106,16 @@ onMounted(async () => {
 
 onUnmounted(() => {
   cleanup()
+})
+
+onActivated(() => {
+  // Refit terminal on activation (e.g. from keep-alive)
+  nextTick(() => {
+    if (fitAddon.value) {
+      fitAddon.value.fit()
+      updateTerminalSize()
+    }
+  })
 })
 
 const handleQuickCommand = ({ key }) => {
