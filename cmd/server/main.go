@@ -58,6 +58,7 @@ func main() {
 	// Public routes
 	authHandler := handlers.NewAuthHandler(db, cfg)
 	router.POST("/api/auth/login", loginRateLimiter.RateLimitMiddleware(), authHandler.Login)
+	router.POST("/api/auth/verify-2fa-login", authHandler.Verify2FALogin)
 	router.POST("/api/auth/logout", authHandler.Logout)
 
 	// WebSocket SSH route (authenticated via one-time ticket in handler)
@@ -104,6 +105,14 @@ func main() {
 		protected.GET("/recordings", recHandler.List)
 		protected.GET("/recordings/:id/stream", recHandler.GetStream)
 		protected.DELETE("/recordings/:id", recHandler.Delete)
+
+		// 2FA routes
+		twoFAHandler := handlers.NewTwoFactorHandler(db, cfg.Security.EncryptionKey)
+		protected.POST("/auth/2fa/setup", twoFAHandler.Setup2FA)
+		protected.POST("/auth/2fa/verify-setup", twoFAHandler.VerifySetup2FA)
+		protected.POST("/auth/2fa/disable", twoFAHandler.Disable2FA)
+		protected.POST("/auth/2fa/verify", twoFAHandler.Verify2FA)
+		protected.POST("/auth/2fa/backup-codes", twoFAHandler.RegenerateBackupCodes)
 
 		// Admin routes
 		admin := protected.Group("/users")

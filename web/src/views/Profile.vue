@@ -1,22 +1,22 @@
 <template>
   <div>
-    <a-card title="User Profile" :bordered="false">
+    <a-card :title="t('nav.profile')" :bordered="false">
       <a-descriptions bordered :column="1" size="small">
-        <a-descriptions-item label="Username">
+        <a-descriptions-item :label="t('user.username')">
           {{ authStore.user?.username }}
         </a-descriptions-item>
-        <a-descriptions-item label="Email">
+        <a-descriptions-item :label="t('user.email')">
           {{ authStore.user?.email }}
         </a-descriptions-item>
-        <a-descriptions-item label="Display Name">
+        <a-descriptions-item :label="t('user.displayName')">
           {{ authStore.user?.display_name || '-' }}
         </a-descriptions-item>
-        <a-descriptions-item label="Role">
+        <a-descriptions-item :label="t('user.role')">
           <a-tag :color="authStore.user?.role === 'admin' ? 'red' : 'blue'">
             {{ authStore.user?.role }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="Status">
+        <a-descriptions-item :label="t('user.status')">
           <a-tag :color="authStore.user?.status === 'active' ? 'success' : 'default'">
             {{ authStore.user?.status }}
           </a-tag>
@@ -24,51 +24,180 @@
         <a-descriptions-item label="Last Login">
           {{ formatDate(authStore.user?.last_login_at) }}
         </a-descriptions-item>
+        <a-descriptions-item :label="t('twofa.title')">
+          <a-tag :color="authStore.user?.two_factor_enabled ? 'success' : 'default'">
+            {{ authStore.user?.two_factor_enabled ? t('twofa.enabled') : t('twofa.disabled') }}
+          </a-tag>
+        </a-descriptions-item>
       </a-descriptions>
 
       <a-divider />
 
-      <a-button type="primary" size="small" @click="showPasswordModal = true">
-        Change Password
-      </a-button>
+      <a-space>
+        <a-button type="primary" size="small" @click="showPasswordModal = true">
+          {{ t('auth.changePassword') }}
+        </a-button>
+
+        <a-button 
+          v-if="!authStore.user?.two_factor_enabled"
+          type="primary" 
+          size="small" 
+          @click="handleSetup2FA"
+        >
+          {{ t('twofa.enable') }}
+        </a-button>
+
+        <a-button 
+          v-else
+          danger 
+          size="small" 
+          @click="showDisable2FAModal = true"
+        >
+          {{ t('twofa.disable') }}
+        </a-button>
+
+        <a-button 
+          v-if="authStore.user?.two_factor_enabled"
+          size="small" 
+          @click="handleRegenerateBackupCodes"
+        >
+          {{ t('twofa.regenerateBackupCodes') }}
+        </a-button>
+      </a-space>
     </a-card>
 
+    <!-- Change Password Modal -->
     <a-modal
       v-model:open="showPasswordModal"
-      title="Change Password"
+      :title="t('auth.changePassword')"
       :confirmLoading="loading"
       @ok="handleChangePassword"
     >
       <a-form layout="vertical">
-        <a-form-item label="Current Password">
+        <a-form-item :label="t('auth.oldPassword')">
           <a-input-password v-model:value="passwordForm.current" />
         </a-form-item>
-        <a-form-item label="New Password">
+        <a-form-item :label="t('auth.newPassword')">
           <a-input-password v-model:value="passwordForm.new" />
         </a-form-item>
-        <a-form-item label="Confirm Password">
+        <a-form-item :label="t('auth.confirmPassword')">
           <a-input-password v-model:value="passwordForm.confirm" />
         </a-form-item>
       </a-form>
+    </a-modal>
+
+    <!-- 2FA Setup Modal -->
+    <a-modal
+      v-model:open="show2FASetupModal"
+      :title="t('twofa.setup')"
+      :confirmLoading="loading"
+      @ok="handleVerifySetup"
+      width="600px"
+    >
+      <a-alert :message="t('twofa.setupDesc')" type="info" show-icon style="margin-bottom: 16px" />
+      
+      <!-- QR Code -->
+      <div style="text-align: center; margin: 20px 0">
+        <img v-if="qrCodeData" :src="qrCodeData" alt="QR Code" style="max-width: 256px; border: 1px solid #d9d9d9; padding: 8px; border-radius: 4px" />
+      </div>
+      
+      <!-- Secret Key -->
+      <a-form layout="vertical">
+        <a-form-item :label="t('twofa.secretKey')">
+          <a-input :value="secretKey" readonly>
+            <template #suffix>
+              <a-button size="small" @click="copySecret">{{ t('common.copy') }}</a-button>
+            </template>
+          </a-input>
+        </a-form-item>
+        
+        <!-- Verification Code -->
+        <a-form-item :label="t('twofa.verificationCode')">
+          <a-input 
+            v-model:value="verificationCode" 
+            :placeholder="t('twofa.enterCode')"
+            maxlength="6"
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- Disable 2FA Modal -->
+    <a-modal
+      v-model:open="showDisable2FAModal"
+      :title="t('twofa.disable')"
+      :confirmLoading="loading"
+      @ok="handleDisable2FA"
+    >
+      <a-alert message="禁用双因素认证将降低账户安全性" type="warning" show-icon style="margin-bottom: 16px" />
+      <a-form layout="vertical">
+        <a-form-item :label="t('twofa.verificationCode')">
+          <a-input 
+            v-model:value="disableVerificationCode" 
+            :placeholder="t('twofa.enterCode')"
+            maxlength="6"
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- Backup Codes Modal -->
+    <a-modal
+      v-model:open="showBackupCodesModal"
+      :title="t('twofa.backupCodes')"
+      :footer="null"
+      width="600px"
+    >
+      <a-alert :message="t('twofa.backupCodesDesc')" type="warning" show-icon style="margin-bottom: 16px" />
+      
+      <div style="background: #ffffff; border: 2px solid #d9d9d9; padding: 20px; border-radius: 4px; margin-bottom: 16px">
+        <ul style="list-style: none; padding: 0; margin: 0; font-family: 'Courier New', monospace; font-size: 16px">
+          <li v-for="(code, index) in backupCodes" :key="index" style="padding: 8px 0; color: #262626; font-weight: 500">
+            {{ code }}
+          </li>
+        </ul>
+      </div>
+
+      <a-space>
+        <a-button type="primary" @click="downloadBackupCodes">
+          {{ t('twofa.downloadBackupCodes') }}
+        </a-button>
+        <a-button @click="showBackupCodesModal = false">
+          {{ t('common.close') }}
+        </a-button>
+      </a-space>
     </a-modal>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { changePassword } from '../api/auth'
+import { setup2FA, verifySetup2FA, disable2FA, regenerateBackupCodes } from '../api/twofa'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 
 const showPasswordModal = ref(false)
+const show2FASetupModal = ref(false)
+const showDisable2FAModal = ref(false)
+const showBackupCodesModal = ref(false)
 const loading = ref(false)
+
 const passwordForm = ref({
   current: '',
   new: '',
   confirm: ''
 })
+
+const qrCodeData = ref('')
+const secretKey = ref('')
+const verificationCode = ref('')
+const disableVerificationCode = ref('')
+const backupCodes = ref([])
 
 const formatDate = (dateString) => {
   if (!dateString) return '-'
@@ -77,12 +206,12 @@ const formatDate = (dateString) => {
 
 const handleChangePassword = async () => {
   if (!passwordForm.value.current || !passwordForm.value.new || !passwordForm.value.confirm) {
-    message.error('Please fill in all fields')
+    message.error(t('auth.invalidCredentials'))
     return
   }
 
   if (passwordForm.value.new !== passwordForm.value.confirm) {
-    message.error('New passwords do not match')
+    message.error(t('auth.passwordMismatch'))
     return
   }
 
@@ -94,19 +223,107 @@ const handleChangePassword = async () => {
   loading.value = true
   try {
     await changePassword(passwordForm.value.current, passwordForm.value.new)
-    message.success('Password changed successfully')
+    message.success(t('auth.passwordChanged'))
     showPasswordModal.value = false
-    // Clear form
-    passwordForm.value = {
-      current: '',
-      new: '',
-      confirm: ''
-    }
+    passwordForm.value = { current: '', new: '', confirm: '' }
   } catch (error) {
-    // Error is handled by global interceptor
     console.error('Password change failed:', error)
   } finally {
     loading.value = false
   }
+}
+
+const handleSetup2FA = async () => {
+  loading.value = true
+  try {
+    const response = await setup2FA()
+    qrCodeData.value = response.qr_code
+    secretKey.value = response.secret
+    show2FASetupModal.value = true
+  } catch (error) {
+    message.error('Failed to setup 2FA')
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleVerifySetup = async () => {
+  if (!verificationCode.value || verificationCode.value.length !== 6) {
+    message.error(t('twofa.invalidCode'))
+    return
+  }
+
+  loading.value = true
+  try {
+    const response = await verifySetup2FA(verificationCode.value, secretKey.value)
+    message.success(t('twofa.setupSuccess'))
+    
+    // Show backup codes
+    backupCodes.value = response.codes
+    showBackupCodesModal.value = true
+    
+    // Refresh user info
+    await authStore.fetchCurrentUser()
+    show2FASetupModal.value = false
+    verificationCode.value = ''
+  } catch (error) {
+    message.error(t('twofa.verifyFailed'))
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleDisable2FA = async () => {
+  if (!disableVerificationCode.value || disableVerificationCode.value.length !== 6) {
+    message.error(t('twofa.invalidCode'))
+    return
+  }
+
+  loading.value = true
+  try {
+    await disable2FA(disableVerificationCode.value)
+    message.success(t('twofa.disableSuccess'))
+    await authStore.fetchCurrentUser()
+    showDisable2FAModal.value = false
+    disableVerificationCode.value = ''
+  } catch (error) {
+    message.error(t('twofa.verifyFailed'))
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleRegenerateBackupCodes = async () => {
+  Modal.confirm({
+    title: t('twofa.regenerateBackupCodes'),
+    content: '重新生成备用码将使旧的备用码失效，确定继续吗？',
+    onOk: async () => {
+      try {
+        const response = await regenerateBackupCodes()
+        backupCodes.value = response.codes
+        showBackupCodesModal.value = true
+        message.success(t('twofa.backupCodesRegenerated'))
+      } catch (error) {
+        message.error('Failed to regenerate backup codes')
+      }
+    }
+  })
+}
+
+const copySecret = () => {
+  navigator.clipboard.writeText(secretKey.value)
+  message.success('Secret key copied to clipboard')
+}
+
+const downloadBackupCodes = () => {
+  const content = backupCodes.value.join('\n')
+  const blob = new Blob([content], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'webssh-backup-codes.txt'
+  a.click()
+  URL.revokeObjectURL(url)
+  message.success('Backup codes downloaded')
 }
 </script>

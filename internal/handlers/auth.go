@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/ihxw/webssh/internal/middleware"
 	"github.com/ihxw/webssh/internal/models"
 	"github.com/ihxw/webssh/internal/utils"
+	"github.com/pquerna/otp/totp"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -68,6 +71,24 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// Check if 2FA is enabled
+	if user.TwoFactorEnabled {
+		// Generate a temporary token for 2FA verification
+		tempToken, err := utils.GenerateToken(user.ID, user.Username, user.Role, h.config.Security.JWTSecret)
+		if err != nil {
+			utils.ErrorResponse(c, http.StatusInternalServerError, "failed to generate token")
+			return
+		}
+
+		// Return response indicating 2FA is required
+		utils.SuccessResponse(c, http.StatusOK, gin.H{
+			"requires_2fa": true,
+			"temp_token":   tempToken,
+			"user_id":      user.ID,
+		})
+		return
+	}
+
 	// Generate JWT token
 	token, err := utils.GenerateToken(user.ID, user.Username, user.Role, h.config.Security.JWTSecret)
 	if err != nil {
@@ -120,6 +141,90 @@ func (h *AuthHandler) GetWSTicket(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, gin.H{
 		"ticket": ticket,
 	})
+}
+
+type Verify2FALoginRequest struct {
+	UserID uint   `json:"user_id" binding:"required"`
+	Code   string `json:"code" binding:"required"`
+}
+
+// Verify2FALogin verifies 2FA code and completes login
+func (h *AuthHandler) Verify2FALogin(c *gin.Context) {
+	var req Verify2FALoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid request: "+err.Error())
+		return
+	}
+
+	var user models.User
+	if err := h.db.First(&user, req.UserID).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "user not found")
+		return
+	}
+
+	if !user.TwoFactorEnabled {
+		utils.ErrorResponse(c, http.StatusBadRequest, "2FA is not enabled")
+		return
+	}
+
+	// Decrypt secret
+	secret, err := utils.Decrypt(user.TwoFactorSecret, h.config.Security.EncryptionKey)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to decrypt secret")
+		return
+	}
+
+	// Verify the code
+	valid := totp.Validate(req.Code, secret)
+	if !valid {
+		// Check backup codes
+		if !h.verifyBackupCode(req.Code, user.BackupCodes) {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "invalid verification code")
+			return
+		}
+	}
+
+	// Generate final JWT token
+	token, err := utils.GenerateToken(user.ID, user.Username, user.Role, h.config.Security.JWTSecret)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to generate token")
+		return
+	}
+
+	// Update last login time
+	now := time.Now()
+	user.LastLoginAt = &now
+	h.db.Save(&user)
+
+	// Return response
+	utils.SuccessResponse(c, http.StatusOK, LoginResponse{
+		Token: token,
+		User:  &user,
+	})
+}
+
+func (h *AuthHandler) verifyBackupCode(code, encryptedCodes string) bool {
+	if encryptedCodes == "" {
+		return false
+	}
+
+	decrypted, err := utils.Decrypt(encryptedCodes, h.config.Security.EncryptionKey)
+	if err != nil {
+		return false
+	}
+
+	var hashedCodes []string
+	if err := json.Unmarshal([]byte(decrypted), &hashedCodes); err != nil {
+		return false
+	}
+
+	for _, hash := range hashedCodes {
+		if bcrypt.CompareHashAndPassword([]byte(hash), []byte(code)) == nil {
+			return true
+		}
+	}
+
+	return false
 }
 
 // ChangePassword allows users to change their own password

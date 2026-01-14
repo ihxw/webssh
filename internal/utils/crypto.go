@@ -81,3 +81,13 @@ func GenerateRandomKey(size int) (string, error) {
 	}
 	return base64.StdEncoding.EncodeToString(key), nil
 }
+
+// Encrypt is an alias for EncryptAES
+func Encrypt(plaintext string, key string) (string, error) {
+	return EncryptAES(plaintext, key)
+}
+
+// Decrypt is an alias for DecryptAES
+func Decrypt(ciphertext string, key string) (string, error) {
+	return DecryptAES(ciphertext, key)
+}

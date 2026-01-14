@@ -18,7 +18,8 @@ export default {
         next: '下一步',
         previous: '上一步',
         submit: '提交',
-        reset: '重置'
+        reset: '重置',
+        copy: '复制'
     },
     nav: {
         terminal: '终端',
@@ -43,7 +44,11 @@ export default {
         newPassword: '新密码',
         confirmPassword: '确认密码',
         passwordMismatch: '两次输入的密码不一致',
-        passwordChanged: '密码修改成功'
+        passwordChanged: '密码修改成功',
+        usernameRequired: '请输入用户名',
+        passwordRequired: '请输入密码',
+        usernamePlaceholder: '请输入用户名或邮箱',
+        passwordPlaceholder: '请输入密码'
     },
     terminal: {
         title: '终端',
@@ -143,5 +148,34 @@ export default {
         zhCN: '简体中文',
         enUS: 'English',
         toggle: '切换语言'
+    },
+    twofa: {
+        title: '双因素认证',
+        enabled: '已启用',
+        disabled: '未启用',
+        enable: '启用 2FA',
+        disable: '禁用 2FA',
+        setup: '设置双因素认证',
+        setupDesc: '扫描下方二维码或手动输入密钥到您的认证器应用（如 Google Authenticator）',
+        qrCode: '二维码',
+        secretKey: '密钥',
+        verificationCode: '验证码',
+        enterCode: '请输入 6 位验证码',
+        verify: '验证',
+        backupCodes: '备用码',
+        backupCodesDesc: '请妥善保存这些备用码，每个备用码只能使用一次',
+        downloadBackupCodes: '下载备用码',
+        regenerateBackupCodes: '重新生成备用码',
+        setupSuccess: '2FA 设置成功',
+        disableSuccess: '2FA 已禁用',
+        verifySuccess: '验证成功',
+        verifyFailed: '验证失败',
+        invalidCode: '验证码无效',
+        backupCodesRegenerated: '备用码已重新生成',
+        loginTitle: '需要双因素认证',
+        loginDesc: '请输入认证器应用中的 6 位验证码或使用备用码',
+        verificationCodeLabel: '验证码',
+        verificationCodeRequired: '请输入验证码',
+        verificationCodePlaceholder: '请输入 6 位验证码或备用码'
     }
 }

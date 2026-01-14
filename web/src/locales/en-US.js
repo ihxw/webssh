@@ -18,7 +18,8 @@ export default {
         next: 'Next',
         previous: 'Previous',
         submit: 'Submit',
-        reset: 'Reset'
+        reset: 'Reset',
+        copy: 'Copy'
     },
     nav: {
         terminal: 'Terminal',
@@ -43,7 +44,11 @@ export default {
         newPassword: 'New Password',
         confirmPassword: 'Confirm Password',
         passwordMismatch: 'Passwords do not match',
-        passwordChanged: 'Password changed successfully'
+        passwordChanged: 'Password changed successfully',
+        usernameRequired: 'Please input your username!',
+        passwordRequired: 'Please input your password!',
+        usernamePlaceholder: 'Enter username or email',
+        passwordPlaceholder: 'Enter password'
     },
     terminal: {
         title: 'Terminal',
@@ -143,5 +148,34 @@ export default {
         zhCN: '简体中文',
         enUS: 'English',
         toggle: 'Toggle Language'
+    },
+    twofa: {
+        title: 'Two-Factor Authentication',
+        enabled: 'Enabled',
+        disabled: 'Disabled',
+        enable: 'Enable 2FA',
+        disable: 'Disable 2FA',
+        setup: 'Setup Two-Factor Authentication',
+        setupDesc: 'Scan the QR code below or manually enter the secret key into your authenticator app (e.g., Google Authenticator)',
+        qrCode: 'QR Code',
+        secretKey: 'Secret Key',
+        verificationCode: 'Verification Code',
+        enterCode: 'Enter 6-digit code',
+        verify: 'Verify',
+        backupCodes: 'Backup Codes',
+        backupCodesDesc: 'Please save these backup codes securely. Each code can only be used once',
+        downloadBackupCodes: 'Download Backup Codes',
+        regenerateBackupCodes: 'Regenerate Backup Codes',
+        setupSuccess: '2FA setup successful',
+        disableSuccess: '2FA disabled',
+        verifySuccess: 'Verification successful',
+        verifyFailed: 'Verification failed',
+        invalidCode: 'Invalid verification code',
+        backupCodesRegenerated: 'Backup codes regenerated',
+        loginTitle: 'Two-Factor Authentication Required',
+        loginDesc: 'Please enter the 6-digit code from your authenticator app or use a backup code.',
+        verificationCodeLabel: 'Verification Code',
+        verificationCodeRequired: 'Please input your verification code!',
+        verificationCodePlaceholder: 'Enter 6-digit code or backup code'
     }
 }
