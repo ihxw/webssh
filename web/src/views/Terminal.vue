@@ -52,6 +52,7 @@
             <TerminalComponent
               :terminal-id="terminal.id"
               :host-id="terminal.hostId"
+              :active="activeTerminalKey === terminal.id"
               @close="() => closeTerminal(terminal.id)"
             />
           </a-tab-pane>
@@ -134,12 +135,13 @@ export default {
 </script>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { message } from 'ant-design-vue'
+import { ref, onMounted, createVNode } from 'vue'
+import { message, Modal } from 'ant-design-vue'
 import {
   DatabaseOutlined,
   PlusOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
+  ExclamationCircleOutlined
 } from '@ant-design/icons-vue'
 import { useSSHStore } from '../stores/ssh'
 import TerminalComponent from '../components/Terminal.vue'
@@ -177,9 +179,33 @@ onMounted(async () => {
 })
 
 const handleHostSelect = (hostId) => {
+  if (!hostId) return
+  
   const host = sshStore.hosts.find(h => h.id === hostId)
   if (host) {
-    connectToHost(host)
+    // Check if host already has an open terminal
+    const existingTerminal = sshStore.terminalList.find(t => t.hostId === hostId)
+    
+    if (existingTerminal) {
+      Modal.confirm({
+        title: 'Host Already Connected',
+        icon: createVNode(ExclamationCircleOutlined),
+        content: `A session for "${host.name}" is already open. Would you like to switch to the existing tab or open a new one?`,
+        okText: 'Switch to Existing',
+        cancelText: 'Open New',
+        onOk() {
+          activeTerminalKey.value = existingTerminal.id
+          selectedHostId.value = null
+        },
+        onCancel() {
+          connectToHost(host)
+          selectedHostId.value = null
+        }
+      })
+    } else {
+      connectToHost(host)
+      selectedHostId.value = null
+    }
   }
 }
 

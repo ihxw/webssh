@@ -15,6 +15,7 @@
               :theme="themeStore.isDark ? 'dark' : 'light'"
               :style="{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', lineHeight: '48px' }"
               @select="handleMenuSelect"
+              :keyboard="false"
             >
               <a-menu-item key="Terminal">
                 <CodeOutlined />

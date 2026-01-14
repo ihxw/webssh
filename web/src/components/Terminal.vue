@@ -60,7 +60,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, onActivated, nextTick, watch } from 'vue'
+import { ref, shallowRef, onMounted, onUnmounted, onActivated, nextTick, watch } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { WebLinksAddon } from 'xterm-addon-web-links'
@@ -75,14 +75,18 @@ const props = defineProps({
   hostId: {
     type: [String, Number],
     required: true
+  },
+  active: {
+    type: Boolean,
+    default: false
   }
 })
 
 const emit = defineEmits(['close'])
 
 const terminalRef = ref(null)
-const terminal = ref(null)
-const fitAddon = ref(null)
+const terminal = shallowRef(null)
+const fitAddon = shallowRef(null)
 const ws = ref(null)
 const connectionStatus = ref('Connecting...')
 const terminalSize = ref('80x24')
@@ -91,6 +95,17 @@ const commandTemplates = ref([])
 const isRecordingEnabled = ref(false)
 
 const statusColor = ref('processing')
+
+watch(() => props.active, (isActive) => {
+  if (isActive && terminal.value) {
+    nextTick(() => {
+      // Small timeout to ensure Ant-Design tab transitions don't steal focus
+      setTimeout(() => {
+        if (terminal.value) terminal.value.focus()
+      }, 50)
+    })
+  }
+})
 
 watch(connectionStatus, (status) => {
   if (status === 'Connected') statusColor.value = 'success'
@@ -109,12 +124,16 @@ onUnmounted(() => {
 })
 
 onActivated(() => {
-  // Refit terminal on activation (e.g. from keep-alive)
+  // Refit and focus terminal on activation (e.g. from keep-alive)
   nextTick(() => {
     if (fitAddon.value) {
       fitAddon.value.fit()
       updateTerminalSize()
     }
+    // Small timeout for reliability
+    setTimeout(() => {
+      if (terminal.value) terminal.value.focus()
+    }, 50)
   })
 })
 
@@ -161,7 +180,8 @@ const initTerminal = () => {
       brightCyan: '#56b6c2',
       brightWhite: '#ffffff'
     },
-    allowProposedApi: true
+    allowProposedApi: true,
+    logLevel: 'info'
   })
 
   // Add fit addon
@@ -212,19 +232,28 @@ const connectWebSocket = async () => {
       message.success('SSH connection established')
       // Send initial resize
       sendResize()
+      // Auto focus
+      terminal.value.focus()
     }
 
     ws.value.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data)
-        if (msg.type === 'error') {
-          terminal.value.writeln(`\r\n\x1b[31mError: ${msg.data}\x1b[0m\r\n`)
-          connectionStatus.value = 'Error'
-        } else if (msg.type === 'connected') {
-          terminal.value.writeln(`\r\n\x1b[32m${msg.data}\x1b[0m\r\n`)
+        // Only treat as structured message if it's an object with a 'type' field
+        if (msg && typeof msg === 'object' && msg.type) {
+          if (msg.type === 'error') {
+            terminal.value.writeln(`\r\n\x1b[31mError: ${msg.data}\x1b[0m\r\n`)
+            connectionStatus.value = 'Error'
+          } else if (msg.type === 'connected') {
+            terminal.value.writeln(`\r\n\x1b[32m${msg.data}\x1b[0m\r\n`)
+          }
+        } else {
+          // If it's valid JSON but not our structured message (e.g. a single number '1')
+          // write it as raw data
+          terminal.value.write(event.data)
         }
       } catch (e) {
-        // Plain text output
+        // Not valid JSON, must be raw terminal output
         terminal.value.write(event.data)
       }
     }
