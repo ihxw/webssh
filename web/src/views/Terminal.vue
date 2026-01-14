@@ -359,6 +359,71 @@ const closeTerminal = (terminalId) => {
   height: 100%;
 }
 
+/* VS Code Style Tabs Overrides */
+:deep(.terminal-tabs.ant-tabs-card > .ant-tabs-nav) {
+  margin-bottom: 0;
+  background-color: #252526; /* VS Code Title Bar/Tabs Container Background */
+  border-bottom: 1px solid #1e1e1e; /* Editor background color for separation */
+}
+
+:deep(.terminal-tabs.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab) {
+  border: none;
+  background: #2d2d2d; /* Inactive tab background */
+  margin-right: 1px;
+  border-radius: 0;
+  color: #969696;
+  padding: 8px 16px;
+  transition: none;
+  height: 35px;
+  line-height: 19px;
+  font-family: 'Segoe WPC', 'Segoe UI', sans-serif;
+  font-size: 13px;
+}
+
+:deep(.terminal-tabs.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab:hover) {
+  color: #e0e0e0;
+}
+
+:deep(.terminal-tabs.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active) {
+  background: #1e1e1e; /* Active tab background/Editor background */
+  color: #ffffff;
+  border-top: 1px solid #007acc; /* Active indicator */
+}
+
+:deep(.terminal-tabs.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-remove) {
+  color: #cccccc;
+  margin-left: 8px;
+  font-size: 10px;
+  transition: all 0.2s;
+  opacity: 0; /* Hide close button by default like VS Code */
+}
+
+:deep(.terminal-tabs.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab:hover .ant-tabs-tab-remove),
+:deep(.terminal-tabs.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-remove) {
+  opacity: 1; /* Show on hover or active */
+}
+
+:deep(.terminal-tabs.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-remove:hover) {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+:deep(.terminal-tabs .ant-tabs-nav-add) {
+  border: none;
+  background: transparent;
+  color: #cccccc;
+}
+
+:deep(.terminal-tabs .ant-tabs-nav-add:hover) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+/* Dark mode adjustment helper if needed, though specific colors above are hardcoded for dark theme concept */
+/* For a true light/dark switch, we would use css variables, but requested "VS Code style" usually implies the dark look for terminals */
+
+
 :deep(.ant-tabs-content) {
   flex: 1;
   height: 100%;
