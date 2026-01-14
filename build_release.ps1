@@ -1,0 +1,138 @@
+# WebSSH Release Build Script
+# usage: .\build_release.ps1
+
+$ErrorActionPreference = "Stop"
+
+# Configuration
+$AppName = "webssh"
+$Version = "1.0.0" # You might want to extract this from config or git tags later
+$ReleaseDir = Join-Path $PSScriptRoot "release"
+$WebDir = Join-Path $PSScriptRoot "web"
+$BinDir = Join-Path $PSScriptRoot "bin"
+$DistDir = Join-Path $WebDir "dist"
+
+# Platforms to build for
+$Targets = @(
+    @{ OS = "windows"; Arch = "amd64"; Ext = ".exe"; Archive = "zip" },
+    @{ OS = "linux";   Arch = "amd64"; Ext = "";     Archive = "tar.gz" },
+    @{ OS = "linux";   Arch = "arm64"; Ext = "";     Archive = "tar.gz" },
+    @{ OS = "darwin";  Arch = "amd64"; Ext = "";     Archive = "tar.gz" },
+    @{ OS = "darwin";  Arch = "arm64"; Ext = "";     Archive = "tar.gz" }
+)
+
+Write-Host "Starting WebSSH Release Build..." -ForegroundColor Cyan
+
+# 1. Environment Check
+Write-Host "1. Checking environment..." -ForegroundColor Yellow
+if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
+    Write-Error "Go is not installed."
+}
+if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+    Write-Error "Node.js (npm) is not installed."
+}
+# Check for tar command availability for non-Windows archives
+if (-not (Get-Command tar -ErrorAction SilentlyContinue)) {
+    Write-Warning "tar command not found. Non-Windows builds typically require tar for .tar.gz. Will attempt to use it anyway."
+}
+
+# 2. Cleanup
+Write-Host "2. Cleaning up..." -ForegroundColor Yellow
+if (Test-Path $ReleaseDir) { Remove-Item -Recurse -Force $ReleaseDir }
+New-Item -ItemType Directory -Path $ReleaseDir | Out-Null
+if (Test-Path $BinDir) { Remove-Item -Recurse -Force $BinDir }
+
+# 3. Build Frontend
+Write-Host "3. Building Frontend..." -ForegroundColor Yellow
+Push-Location $WebDir
+try {
+    Write-Host "   Installing dependencies..."
+    npm install | Out-Null
+    Write-Host "   Building assets..."
+    npm run build | Out-Null
+}
+finally {
+    Pop-Location
+}
+
+if (-not (Test-Path $DistDir)) {
+    Write-Error "Frontend build failed: dist directory not found."
+}
+
+# 4. Build and Package for each target
+Write-Host "4. Building Backends and Packaging..." -ForegroundColor Yellow
+
+foreach ($Target in $Targets) {
+    $OS = $Target.OS
+    $Arch = $Target.Arch
+    $Ext = $Target.Ext
+    $ArchiveType = $Target.Archive
+    
+    $PackageName = "$AppName-$OS-$Arch"
+    $OutputDir = Join-Path $ReleaseDir $PackageName
+    $BinaryName = "$AppName$Ext"
+    $BinaryPath = Join-Path $OutputDir $BinaryName
+
+    Write-Host "   Building for $OS/$Arch..."
+    
+    # Create temp directory for this target
+    New-Item -ItemType Directory -Path $OutputDir | Out-Null
+    
+    # Copy Assets
+    $WebDistDest = Join-Path $OutputDir "web/dist"
+    New-Item -ItemType Directory -Path (Split-Path $WebDistDest) -Force | Out-Null
+    Copy-Item -Recurse -Path $DistDir -Destination (Split-Path $WebDistDest)
+
+    # Copy Configs
+    $ConfigDest = Join-Path $OutputDir "configs"
+    New-Item -ItemType Directory -Path $ConfigDest | Out-Null
+    Copy-Item -Path (Join-Path $PSScriptRoot "configs/config.yaml") -Destination $ConfigDest
+
+    # Build Go Binary
+    $Env:GOOS = $OS
+    $Env:GOARCH = $Arch
+    $Env:CGO_ENABLED = "0"
+    
+    go build -o $BinaryPath ./cmd/server/main.go
+    
+    if (-not (Test-Path $BinaryPath)) {
+        Write-Error "Build failed for $OS/$Arch"
+    }
+
+    # Archive
+    Write-Host "   Packaging $PackageName..."
+    $ArchivePath = Join-Path $ReleaseDir "$PackageName.$ArchiveType"
+    
+    if ($ArchiveType -eq "zip") {
+        Compress-Archive -Path "$OutputDir\*" -DestinationPath $ArchivePath
+    }
+    elseif ($ArchiveType -eq "tar.gz") {
+        # Using tar.exe (available on Windows 10/11)
+        # -C changes directory so we archive the *contents* of OutputDir relative to it, or just archive the folder itself?
+        # Standard practice: archive the folder so when extracted it creates a folder.
+        # Let's archive the folder relative to ReleaseDir
+        
+        $CurrentDir = Get-Location
+        Set-Location $ReleaseDir
+        try {
+            tar -czf "$PackageName.tar.gz" $PackageName
+        }
+        finally {
+            Set-Location $CurrentDir
+        }
+    }
+
+    # Cleanup temp folder for this target
+    Remove-Item -Recurse -Force $OutputDir
+    
+    Write-Host "   Done: $ArchivePath" -ForegroundColor Green
+}
+
+# Cleanup Env Vars
+Remove-Item Env:\GOOS -ErrorAction SilentlyContinue
+Remove-Item Env:\GOARCH -ErrorAction SilentlyContinue
+Remove-Item Env:\CGO_ENABLED -ErrorAction SilentlyContinue
+
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "Release build complete!" -ForegroundColor Green
+Write-Host "Artifacts are in: $ReleaseDir" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
