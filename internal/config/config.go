@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const Version = "1.0.0"
+
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`

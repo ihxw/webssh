@@ -133,12 +133,17 @@
         @close="error = ''"
         style="margin-top: 16px"
       />
+
+      <div class="version-info" style="margin-top: 24px; text-align: center; color: #8c8c8c; font-size: 12px">
+        <div>{{ t('common.frontendVersion') }}: {{ frontendVersion }}</div>
+        <div>{{ t('common.backendVersion') }}: {{ backendVersion }}</div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref, h } from 'vue'
+import { reactive, ref, h, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { 
@@ -154,6 +159,8 @@ import { useThemeStore } from '../stores/theme'
 import { useLocaleStore } from '../stores/locale'
 import { useI18n } from 'vue-i18n'
 import api from '../api'
+import { getSystemInfo } from '../api/system'
+import packageJson from '../../package.json'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -161,6 +168,19 @@ const route = useRoute()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const localeStore = useLocaleStore()
+
+const frontendVersion = packageJson.version
+const backendVersion = ref('...')
+
+onMounted(async () => {
+  try {
+    const info = await getSystemInfo()
+    backendVersion.value = info.version
+  } catch (err) {
+    console.error('Failed to fetch backend version:', err)
+    backendVersion.value = 'unknown'
+  }
+})
 
 const formState = reactive({
   username: '',

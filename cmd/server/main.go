@@ -60,6 +60,7 @@ func main() {
 	router.POST("/api/auth/login", loginRateLimiter.RateLimitMiddleware(), authHandler.Login)
 	router.POST("/api/auth/verify-2fa-login", authHandler.Verify2FALogin)
 	router.POST("/api/auth/logout", authHandler.Logout)
+	router.GET("/api/system/info", authHandler.GetSystemInfo)
 
 	// WebSocket SSH route (authenticated via one-time ticket in handler)
 	sshWSHandler := handlers.NewSSHWebSocketHandler(db, cfg)

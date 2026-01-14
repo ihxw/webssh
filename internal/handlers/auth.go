@@ -265,3 +265,10 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		"message": "password updated successfully",
 	})
 }
+
+// GetSystemInfo returns system information including version
+func (h *AuthHandler) GetSystemInfo(c *gin.Context) {
+	utils.SuccessResponse(c, http.StatusOK, gin.H{
+		"version": config.Version,
+	})
+}

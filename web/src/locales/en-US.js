@@ -19,7 +19,9 @@ export default {
         previous: 'Previous',
         submit: 'Submit',
         reset: 'Reset',
-        copy: 'Copy'
+        copy: 'Copy',
+        frontendVersion: 'Frontend Version',
+        backendVersion: 'Backend Version'
     },
     nav: {
         terminal: 'Terminal',

@@ -43,6 +43,11 @@
           </a-menu>
 
           <div style="display: flex; align-items: center; gap: 16px">
+            <div style="font-size: 12px; color: #8c8c8c; display: flex; flex-direction: column; line-height: 1.2; text-align: right">
+              <span>FE: {{ frontendVersion }}</span>
+              <span>BE: {{ backendVersion }}</span>
+            </div>
+            
             <a-button size="small" @click="localeStore.toggleLocale">
               {{ localeStore.isZhCN ? 'EN' : '中' }}
             </a-button>
@@ -106,6 +111,8 @@ import {
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import { useLocaleStore } from '../stores/locale'
+import { getSystemInfo } from '../api/system'
+import packageJson from '../../package.json'
 
 const { t } = useI18n()
 
@@ -115,11 +122,23 @@ const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const localeStore = useLocaleStore()
 
+const frontendVersion = packageJson.version
+const backendVersion = ref('...')
+
 const selectedKeys = ref(['Terminal'])
 
 // Initialize theme on mount
 onMounted(async () => {
   themeStore.initTheme()
+  
+  // Fetch backend version
+  try {
+    const info = await getSystemInfo()
+    backendVersion.value = info.version
+  } catch (err) {
+    console.error('Failed to fetch backend version:', err)
+    backendVersion.value = 'unknown'
+  }
   
   // Ensure user info is loaded
   if (authStore.isAuthenticated && !authStore.user) {

@@ -19,7 +19,9 @@ export default {
         previous: '上一步',
         submit: '提交',
         reset: '重置',
-        copy: '复制'
+        copy: '复制',
+        frontendVersion: '前端版本',
+        backendVersion: '后端版本'
     },
     nav: {
         terminal: '终端',
