@@ -1,0 +1,20 @@
+server:
+  port: 8080
+  mode: debug  # debug or release
+
+database:
+  path: ./data/webssh.db
+
+security:
+  # IMPORTANT: Change these in production!
+  # Generate with: openssl rand -base64 32
+  jwt_secret: "zheshijwtdeanquanma"  # Set via WEBSSH_JWT_SECRET environment variable
+  encryption_key: "f9751dd3bec89bfbbebe6d45f02d60b7"  # Set via WEBSSH_ENCRYPTION_KEY environment variable (must be exactly 32 bytes)
+
+ssh:
+  timeout: 30s
+  max_connections_per_user: 10
+
+log:
+  level: info
+  file: ./logs/app.log

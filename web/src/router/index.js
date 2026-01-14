@@ -1,0 +1,107 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
+const routes = [
+    {
+        path: '/login',
+        name: 'Login',
+        component: () => import('../views/Login.vue'),
+        meta: { requiresAuth: false }
+    },
+    {
+        path: '/',
+        redirect: '/dashboard/terminal'
+    },
+    {
+        path: '/dashboard',
+        name: 'Dashboard',
+        component: () => import('../views/Dashboard.vue'),
+        meta: { requiresAuth: true },
+        children: [
+            {
+                path: 'terminal',
+                name: 'Terminal',
+                component: () => import('../views/Terminal.vue'),
+                meta: { requiresAuth: true }
+            },
+            {
+                path: 'hosts',
+                name: 'HostManagement',
+                component: () => import('../views/HostManagement.vue'),
+                meta: { requiresAuth: true }
+            },
+            {
+                path: 'history',
+                name: 'ConnectionHistory',
+                component: () => import('../views/ConnectionHistory.vue'),
+                meta: { requiresAuth: true }
+            },
+            {
+                path: 'users',
+                name: 'UserManagement',
+                component: () => import('../views/UserManagement.vue'),
+                meta: { requiresAuth: true, requiresAdmin: true }
+            },
+            {
+                path: 'profile',
+                name: 'Profile',
+                component: () => import('../views/Profile.vue'),
+                meta: { requiresAuth: true }
+            }
+        ]
+    }
+]
+
+const router = createRouter({
+    history: createWebHistory(),
+    routes
+})
+
+// Navigation guard
+router.beforeEach(async (to, from, next) => {
+    const authStore = useAuthStore()
+
+    // Check if route requires authentication
+    if (to.meta.requiresAuth) {
+        if (!authStore.isAuthenticated) {
+            // Try to restore session from localStorage
+            const token = localStorage.getItem('token')
+            if (token) {
+                authStore.token = token
+                try {
+                    await authStore.fetchCurrentUser()
+
+                    // Check admin requirement
+                    if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
+                        next({ name: 'Terminal' })
+                        return
+                    }
+
+                    next()
+                } catch (error) {
+                    // Token invalid, redirect to login
+                    authStore.logout()
+                    next({ name: 'Login', query: { redirect: to.fullPath } })
+                }
+            } else {
+                next({ name: 'Login', query: { redirect: to.fullPath } })
+            }
+        } else {
+            // Check admin requirement
+            if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
+                next({ name: 'Terminal' })
+                return
+            }
+            next()
+        }
+    } else {
+        // Public route
+        if (to.name === 'Login' && authStore.isAuthenticated) {
+            next({ name: 'Terminal' })
+        } else {
+            next()
+        }
+    }
+})
+
+export default router
