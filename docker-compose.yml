@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  webssh:
+    build: .
+    container_name: webssh
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - WEBSSH_PORT=3000
+      - WEBSSH_DB_PATH=/app/data/webssh.db
+    restart: always
