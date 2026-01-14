@@ -49,8 +49,8 @@ type UpdateSSHHostRequest struct {
 	Description string `json:"description"`
 }
 
-// GetHosts returns a list of SSH hosts for the current user
-func (h *SSHHostHandler) GetHosts(c *gin.Context) {
+// List returns a list of SSH hosts for the current user
+func (h *SSHHostHandler) List(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	group := c.Query("group")
 	search := c.Query("search")
@@ -77,8 +77,8 @@ func (h *SSHHostHandler) GetHosts(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, hosts)
 }
 
-// GetHost returns a single SSH host
-func (h *SSHHostHandler) GetHost(c *gin.Context) {
+// Get returns a single SSH host
+func (h *SSHHostHandler) Get(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	id := c.Param("id")
 
@@ -105,8 +105,8 @@ func (h *SSHHostHandler) GetHost(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, host)
 }
 
-// CreateHost creates a new SSH host
-func (h *SSHHostHandler) CreateHost(c *gin.Context) {
+// Create creates a new SSH host
+func (h *SSHHostHandler) Create(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 
 	var req CreateSSHHostRequest
@@ -169,8 +169,8 @@ func (h *SSHHostHandler) CreateHost(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusCreated, host)
 }
 
-// UpdateHost updates an SSH host
-func (h *SSHHostHandler) UpdateHost(c *gin.Context) {
+// Update updates an SSH host
+func (h *SSHHostHandler) Update(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	id := c.Param("id")
 
@@ -238,8 +238,8 @@ func (h *SSHHostHandler) UpdateHost(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, host)
 }
 
-// DeleteHost deletes an SSH host
-func (h *SSHHostHandler) DeleteHost(c *gin.Context) {
+// Delete deletes an SSH host
+func (h *SSHHostHandler) Delete(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	id := c.Param("id")
 

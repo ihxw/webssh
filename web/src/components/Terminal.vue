@@ -5,41 +5,75 @@
     <div v-if="connectionStatus" class="terminal-status" style="padding: 2px 8px; background: #1f1f1f; border-top: 1px solid #303030; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; min-height: 28px">
       <div>
         <a-tag :color="statusColor" size="small" style="font-size: 10px; line-height: 14px; height: 16px; margin-right: 8px">{{ connectionStatus }}</a-tag>
-        <span style="color: #888; font-size: 11px">{{ terminalSize }}</span>
+        <span style="color: #bbb; font-size: 11px; margin-right: 8px">{{ terminalSize }}</span>
+        <a-switch v-model:checked="isRecordingEnabled" size="small" :disabled="connectionStatus === 'Connected'" />
+        <span style="color: #bbb; font-size: 10px; margin-left: 4px">Record</span>
       </div>
-      <div>
+      <div style="display: flex; align-items: center">
         <a-space size="small">
-          <a-button size="small" type="text" @click="reconnect" v-if="connectionStatus === 'Disconnected'" style="padding: 0 4px; height: 20px; font-size: 11px">
+          <a-button class="status-btn" size="small" type="text" @click="reconnect" v-if="connectionStatus === 'Disconnected'">
             <template #icon><ReloadOutlined /></template>
             Reconnect
           </a-button>
-          <a-button size="small" type="text" danger @click="disconnect" v-if="connectionStatus === 'Connected'" style="padding: 0 4px; height: 20px; font-size: 11px">
+          <a-button class="status-btn danger" size="small" type="text" danger @click="disconnect" v-if="connectionStatus === 'Connected'">
             <template #icon><DisconnectOutlined /></template>
             Disconnect
           </a-button>
         </a-space>
+        <a-divider type="vertical" class="status-divider" />
+        <a-button class="status-btn" size="small" type="text" @click="showSftp = true" :disabled="connectionStatus !== 'Connected'">
+          <template #icon><FolderOpenOutlined /></template>
+          SFTP
+        </a-button>
+        <a-divider type="vertical" class="status-divider" />
+        <a-dropdown :disabled="connectionStatus !== 'Connected'" placement="topRight">
+          <a-button class="status-btn" size="small" type="text">
+            <template #icon><ThunderboltOutlined /></template>
+            Commands
+          </a-button>
+          <template #overlay>
+            <a-menu @click="handleQuickCommand">
+              <a-menu-item v-for="cmd in commandTemplates" :key="cmd.command">
+                {{ cmd.name }}
+              </a-menu-item>
+              <a-menu-divider v-if="commandTemplates.length > 0" />
+              <a-menu-item @click="$router.push({ name: 'CommandManagement' })">
+                Manage Templates
+              </a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
       </div>
     </div>
+
+    <!-- SFTP Drawer -->
+    <a-drawer
+      v-model:open="showSftp"
+      title="File Explorer"
+      placement="right"
+      :width="400"
+      :body-style="{ padding: '8px' }"
+    >
+      <SftpBrowser :host-id="hostId" :visible="showSftp" />
+    </a-drawer>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { WebLinksAddon } from 'xterm-addon-web-links'
 import { message } from 'ant-design-vue'
-import { ReloadOutlined, DisconnectOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, DisconnectOutlined, FolderOpenOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
 import { getWSTicket } from '../api/auth'
+import { listCommandTemplates } from '../api/command'
+import SftpBrowser from './SftpBrowser.vue'
 import 'xterm/css/xterm.css'
 
 const props = defineProps({
-  terminalId: {
-    type: String,
-    required: true
-  },
   hostId: {
-    type: [Number, String],
+    type: [String, Number],
     required: true
   }
 })
@@ -51,7 +85,10 @@ const terminal = ref(null)
 const fitAddon = ref(null)
 const ws = ref(null)
 const connectionStatus = ref('Connecting...')
-const terminalSize = ref('')
+const terminalSize = ref('80x24')
+const showSftp = ref(false)
+const commandTemplates = ref([])
+const isRecordingEnabled = ref(false)
 
 const statusColor = ref('processing')
 
@@ -64,11 +101,27 @@ watch(connectionStatus, (status) => {
 onMounted(async () => {
   initTerminal()
   await connectWebSocket()
+  loadCommands()
 })
 
 onUnmounted(() => {
   cleanup()
 })
+
+const handleQuickCommand = ({ key }) => {
+  if (key && ws.value && ws.value.readyState === WebSocket.OPEN) {
+    ws.value.send(JSON.stringify({ type: 'input', data: key + '\n' }))
+  }
+}
+
+const loadCommands = async () => {
+  try {
+    const data = await listCommandTemplates()
+    commandTemplates.value = data || []
+  } catch (error) {
+    console.error('Failed to load command templates:', error)
+  }
+}
 
 const initTerminal = () => {
   // Create terminal instance
@@ -140,8 +193,8 @@ const connectWebSocket = async () => {
     // 2. Connect via WebSocket with ticket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    const wsUrl = `${protocol}//${host}/api/ws/ssh/${props.hostId}?ticket=${ticket}`
-
+    const wsUrl = `${protocol}//${host}/api/ws/ssh/${props.hostId}?ticket=${ticket}${isRecordingEnabled.value ? '&record=true' : ''}`
+    
     ws.value = new WebSocket(wsUrl)
 
     ws.value.onopen = () => {
@@ -252,5 +305,37 @@ const cleanup = () => {
 
 :deep(.xterm) {
   padding: 4px;
+}
+
+.status-btn {
+  padding: 0 7px !important;
+  height: 24px !important;
+  font-size: 14px !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.status-btn:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.status-btn.danger {
+  color: #ff4d4f !important;
+}
+
+.status-btn.danger:hover {
+  color: #ff7875 !important;
+  background: rgba(255, 77, 79, 0.1) !important;
+}
+
+:deep(.status-btn .anticon) {
+  font-size: 12px !important;
+}
+
+.status-divider {
+  background: rgba(255, 255, 255, 0.2) !important;
+  margin: 0 4px !important;
 }
 </style>

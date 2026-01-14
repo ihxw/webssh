@@ -144,6 +144,11 @@ func (c *SSHClient) GetSession() *ssh.Session {
 	return c.session
 }
 
+// GetRawClient returns the underlying ssh.Client
+func (c *SSHClient) GetRawClient() *ssh.Client {
+	return c.client
+}
+
 // Wait waits for the session to finish
 func (c *SSHClient) Wait() error {
 	if c.session == nil {

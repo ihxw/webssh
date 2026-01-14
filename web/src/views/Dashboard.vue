@@ -16,19 +16,27 @@
               :style="{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', lineHeight: '48px' }"
               @select="handleMenuSelect"
             >
-              <a-menu-item key="terminal">
+              <a-menu-item key="Terminal">
                 <CodeOutlined />
                 Terminal
               </a-menu-item>
-              <a-menu-item key="hosts">
+              <a-menu-item key="HostManagement">
                 <DatabaseOutlined />
                 Hosts
               </a-menu-item>
-              <a-menu-item key="history">
+              <a-menu-item key="ConnectionHistory">
                 <HistoryOutlined />
-                History
+                <span>History</span>
               </a-menu-item>
-              <a-menu-item key="users" v-if="authStore.isAdmin">
+              <a-menu-item key="CommandManagement">
+                <ThunderboltOutlined />
+                <span>Commands</span>
+              </a-menu-item>
+              <a-menu-item key="RecordingManagement">
+                <VideoCameraOutlined />
+                <span>Recordings</span>
+              </a-menu-item>
+              <a-menu-item v-if="authStore.user?.role === 'admin'" key="UserManagement">
                 <TeamOutlined />
                 Users
               </a-menu-item>
@@ -82,6 +90,10 @@ import {
   UserOutlined,
   DownOutlined,
   LogoutOutlined,
+  MenuUnfoldOutlined,
+  MenuFoldOutlined,
+  ThunderboltOutlined,
+  VideoCameraOutlined,
   BulbOutlined,
   BulbFilled
 } from '@ant-design/icons-vue'
@@ -93,24 +105,22 @@ const route = useRoute()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 
-const selectedKeys = ref(['terminal'])
+const selectedKeys = ref(['Terminal'])
 
 // Initialize theme on mount
 onMounted(() => {
   themeStore.initTheme()
 })
 
-// Update selected menu based on route
-watch(() => route.path, (path) => {
-  if (path.includes('/terminal')) selectedKeys.value = ['terminal']
-  else if (path.includes('/hosts')) selectedKeys.value = ['hosts']
-  else if (path.includes('/history')) selectedKeys.value = ['history']
-  else if (path.includes('/users')) selectedKeys.value = ['users']
-  else if (path.includes('/profile')) selectedKeys.value = ['profile']
+// Update selected menu based on route name
+watch(() => route.name, (name) => {
+  if (name) {
+    selectedKeys.value = [name]
+  }
 }, { immediate: true })
 
 const handleMenuSelect = ({ key }) => {
-  router.push(`/dashboard/${key}`)
+  router.push({ name: key })
 }
 
 const handleLogout = async () => {

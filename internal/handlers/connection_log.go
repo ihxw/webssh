@@ -20,8 +20,8 @@ func NewConnectionLogHandler(db *gorm.DB) *ConnectionLogHandler {
 	return &ConnectionLogHandler{db: db}
 }
 
-// GetLogs returns connection logs
-func (h *ConnectionLogHandler) GetLogs(c *gin.Context) {
+// List returns connection logs
+func (h *ConnectionLogHandler) List(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	role := middleware.GetRole(c)
 

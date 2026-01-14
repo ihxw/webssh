@@ -18,6 +18,9 @@ export const useThemeStore = defineStore('theme', {
             colorBgElevated: state.isDark ? '#1f1f1f' : '#ffffff',
             colorBorder: state.isDark ? '#303030' : '#d9d9d9',
             borderRadius: 2, // Slightly more square for compact feel
+            // Override compact algorithm for small buttons to match official standard
+            controlHeightSM: 24,
+            fontSizeSM: 14,
         })
     },
 

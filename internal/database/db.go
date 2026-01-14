@@ -24,10 +24,11 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 	}
 
 	// Open database connection with pure Go driver (modernc.org/sqlite)
-	// The driver name "sqlite" will use modernc.org/sqlite when imported
+	// Add busy_timeout to handle concurrent access
+	dsn := dbPath + "?_pragma=busy_timeout(5000)"
 	db, err := gorm.Open(sqlite.Dialector{
 		DriverName: "sqlite",
-		DSN:        dbPath,
+		DSN:        dsn,
 	}, &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
@@ -41,9 +42,19 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to get database instance: %w", err)
 	}
 
+	// Enable WAL mode for better concurrency
+	_, err = sqlDB.Exec("PRAGMA journal_mode=WAL;")
+	if err != nil {
+		return nil, fmt.Errorf("failed to enable WAL: %w", err)
+	}
+	_, err = sqlDB.Exec("PRAGMA synchronous=NORMAL;")
+	if err != nil {
+		return nil, fmt.Errorf("failed to set synchronous mode: %w", err)
+	}
+
 	// Set connection pool settings
 	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetMaxOpenConns(10) // Limit open connections for SQLite
 
 	DB = db
 	return db, nil

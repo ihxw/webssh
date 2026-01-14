@@ -37,6 +37,18 @@ const routes = [
                 meta: { requiresAuth: true }
             },
             {
+                path: 'commands',
+                name: 'CommandManagement',
+                component: () => import('../views/CommandManagement.vue'),
+                meta: { requiresAuth: true }
+            },
+            {
+                path: 'recordings',
+                name: 'RecordingManagement',
+                component: () => import('../views/RecordingManagement.vue'),
+                meta: { requiresAuth: true }
+            },
+            {
                 path: 'users',
                 name: 'UserManagement',
                 component: () => import('../views/UserManagement.vue'),

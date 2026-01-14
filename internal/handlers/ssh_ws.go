@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -201,9 +204,36 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 	// Channel to signal completion
 	done := make(chan bool)
 
+	// Handle recording
+	record := c.Query("record") == "true"
+	var recording *models.TerminalRecording
+	var recordFile *os.File
+	if record {
+		recordingDir := "data/recordings"
+		os.MkdirAll(recordingDir, 0755)
+
+		fileName := fmt.Sprintf("%d-%d-%d.cast", userID, host.ID, time.Now().Unix())
+		filePath := filepath.Join(recordingDir, fileName)
+
+		f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err == nil {
+			recordFile = f
+			recording = &models.TerminalRecording{
+				UserID:    userID,
+				SSHHostID: host.ID,
+				Host:      host.Host,
+				Username:  host.Username,
+				FilePath:  filePath,
+				StartTime: time.Now(),
+			}
+			h.db.Create(recording)
+		}
+	}
+
 	// Read from SSH stdout and send to WebSocket
 	go func() {
 		buf := make([]byte, 1024)
+		start := time.Now()
 		for {
 			n, err := stdout.Read(buf)
 			if err != nil {
@@ -214,7 +244,14 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 				return
 			}
 			if n > 0 {
-				if err := ws.WriteMessage(websocket.TextMessage, buf[:n]); err != nil {
+				data := buf[:n]
+				if recordFile != nil {
+					// Store as [time_offset, "o", "data"]
+					offset := time.Since(start).Seconds()
+					entry := fmt.Sprintf("[%f, \"o\", %q]\n", offset, string(data))
+					recordFile.WriteString(entry)
+				}
+				if err := ws.WriteMessage(websocket.TextMessage, data); err != nil {
 					log.Printf("Error writing to WebSocket: %v", err)
 					done <- true
 					return
@@ -280,6 +317,17 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 
 	// Wait for completion
 	<-done
+
+	// Finalize recording
+	if recordFile != nil {
+		recordFile.Close()
+		if recording != nil {
+			now := time.Now()
+			recording.EndTime = &now
+			recording.Duration = int(now.Sub(recording.StartTime).Seconds())
+			h.db.Save(recording)
+		}
+	}
 
 	// Update connection log
 	now := time.Now()

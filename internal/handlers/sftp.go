@@ -1,0 +1,245 @@
+package handlers
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"path/filepath"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/ihxw/webssh/internal/config"
+	"github.com/ihxw/webssh/internal/middleware"
+	"github.com/ihxw/webssh/internal/models"
+	"github.com/ihxw/webssh/internal/ssh"
+	"github.com/ihxw/webssh/internal/utils"
+	"github.com/pkg/sftp"
+	"gorm.io/gorm"
+)
+
+type SftpHandler struct {
+	db     *gorm.DB
+	config *config.Config
+}
+
+func NewSftpHandler(db *gorm.DB, cfg *config.Config) *SftpHandler {
+	return &SftpHandler{
+		db:     db,
+		config: cfg,
+	}
+}
+
+type FileInfo struct {
+	Name    string    `json:"name"`
+	Size    int64     `json:"size"`
+	Mode    uint32    `json:"mode"`
+	ModTime time.Time `json:"mod_time"`
+	IsDir   bool      `json:"is_dir"`
+}
+
+// getSftpClient helper to create an SFTP client for a host
+func (h *SftpHandler) getSftpClient(userID uint, hostID string) (*sftp.Client, *ssh.SSHClient, error) {
+	// Get SSH host from database
+	var host models.SSHHost
+	if err := h.db.Where("id = ? AND user_id = ?", hostID, userID).First(&host).Error; err != nil {
+		return nil, nil, fmt.Errorf("host not found")
+	}
+
+	// Decrypt credentials
+	var password, privateKey string
+	if host.PasswordEncrypted != "" {
+		decrypted, err := utils.DecryptAES(host.PasswordEncrypted, h.config.Security.EncryptionKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to decrypt password")
+		}
+		password = decrypted
+	}
+	if host.PrivateKeyEncrypted != "" {
+		decrypted, err := utils.DecryptAES(host.PrivateKeyEncrypted, h.config.Security.EncryptionKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to decrypt private key")
+		}
+		privateKey = decrypted
+	}
+
+	// Create SSH client
+	timeout, _ := time.ParseDuration(h.config.SSH.Timeout)
+	if timeout == 0 {
+		timeout = 30 * time.Second
+	}
+
+	sshClient, err := ssh.NewSSHClient(&ssh.SSHConfig{
+		Host:       host.Host,
+		Port:       host.Port,
+		Username:   host.Username,
+		Password:   password,
+		PrivateKey: privateKey,
+		Timeout:    timeout,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create SSH client: %w", err)
+	}
+
+	if err := sshClient.Connect(); err != nil {
+		return nil, nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	// Create SFTP client
+	sftpClient, err := sftp.NewClient(sshClient.GetRawClient())
+	if err != nil {
+		sshClient.Close()
+		return nil, nil, fmt.Errorf("failed to create SFTP client: %w", err)
+	}
+
+	return sftpClient, sshClient, nil
+}
+
+// List handled GET /api/sftp/list/:hostId?path=...
+func (h *SftpHandler) List(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	hostID := c.Param("hostId")
+	path := c.DefaultQuery("path", ".")
+
+	sftpClient, sshClient, err := h.getSftpClient(userID, hostID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer sftpClient.Close()
+	defer sshClient.Close()
+
+	files, err := sftpClient.ReadDir(path)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to read directory: "+err.Error())
+		return
+	}
+
+	var result []FileInfo
+	for _, f := range files {
+		result = append(result, FileInfo{
+			Name:    f.Name(),
+			Size:    f.Size(),
+			Mode:    uint32(f.Mode()),
+			ModTime: f.ModTime(),
+			IsDir:   f.IsDir(),
+		})
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, result)
+}
+
+// Download handles GET /api/sftp/download/:hostId?path=...
+func (h *SftpHandler) Download(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	hostID := c.Param("hostId")
+	path := c.Query("path")
+
+	if path == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "path is required")
+		return
+	}
+
+	sftpClient, sshClient, err := h.getSftpClient(userID, hostID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer sftpClient.Close()
+	defer sshClient.Close()
+
+	file, err := sftpClient.Open(path)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to open file: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to stat file: "+err.Error())
+		return
+	}
+
+	c.Header("Content-Disposition", "attachment; filename="+filepath.Base(path))
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Length", fmt.Sprintf("%d", stat.Size()))
+
+	io.Copy(c.Writer, file)
+}
+
+// Upload handles POST /api/sftp/upload/:hostId
+func (h *SftpHandler) Upload(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	hostID := c.Param("hostId")
+	remotePath := c.PostForm("path")
+
+	if remotePath == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "path is required")
+		return
+	}
+
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "failed to get file: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	sftpClient, sshClient, err := h.getSftpClient(userID, hostID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer sftpClient.Close()
+	defer sshClient.Close()
+
+	fullPath := filepath.Join(remotePath, header.Filename)
+	fullPath = filepath.ToSlash(fullPath) // Ensure forward slashes for Linux remotes
+
+	dst, err := sftpClient.Create(fullPath)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to create remote file: "+err.Error())
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to copy file: "+err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "file uploaded successfully"})
+}
+
+// Delete handles DELETE /api/sftp/delete/:hostId?path=...
+func (h *SftpHandler) Delete(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	hostID := c.Param("hostId")
+	path := c.Query("path")
+
+	if path == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "path is required")
+		return
+	}
+
+	sftpClient, sshClient, err := h.getSftpClient(userID, hostID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer sftpClient.Close()
+	defer sshClient.Close()
+
+	err = sftpClient.Remove(path)
+	if err != nil {
+		// Try to remove directory if remove file failed
+		err = sftpClient.RemoveDirectory(path)
+	}
+
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to delete: "+err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "deleted successfully"})
+}

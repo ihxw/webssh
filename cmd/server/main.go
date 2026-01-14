@@ -63,15 +63,35 @@ func main() {
 
 		// SSH host routes
 		sshHostHandler := handlers.NewSSHHostHandler(db, cfg)
-		protected.GET("/ssh-hosts", sshHostHandler.GetHosts)
-		protected.POST("/ssh-hosts", sshHostHandler.CreateHost)
-		protected.GET("/ssh-hosts/:id", sshHostHandler.GetHost)
-		protected.PUT("/ssh-hosts/:id", sshHostHandler.UpdateHost)
-		protected.DELETE("/ssh-hosts/:id", sshHostHandler.DeleteHost)
+		protected.GET("/ssh-hosts", sshHostHandler.List)
+		protected.POST("/ssh-hosts", sshHostHandler.Create)
+		protected.PUT("/ssh-hosts/:id", sshHostHandler.Update)
+		protected.DELETE("/ssh-hosts/:id", sshHostHandler.Delete)
+		protected.GET("/ssh-hosts/:id", sshHostHandler.Get)
+
+		// SFTP routes
+		sftpHandler := handlers.NewSftpHandler(db, cfg)
+		protected.GET("/sftp/list/:hostId", sftpHandler.List)
+		protected.GET("/sftp/download/:hostId", sftpHandler.Download)
+		protected.POST("/sftp/upload/:hostId", sftpHandler.Upload)
+		protected.DELETE("/sftp/delete/:hostId", sftpHandler.Delete)
 
 		// Connection log routes
 		logHandler := handlers.NewConnectionLogHandler(db)
-		protected.GET("/connection-logs", logHandler.GetLogs)
+		protected.GET("/connection-logs", logHandler.List)
+
+		// Command template routes
+		cmdHandler := handlers.NewCommandTemplateHandler(db)
+		protected.GET("/command-templates", cmdHandler.List)
+		protected.POST("/command-templates", cmdHandler.Create)
+		protected.PUT("/command-templates/:id", cmdHandler.Update)
+		protected.DELETE("/command-templates/:id", cmdHandler.Delete)
+
+		// Recording routes
+		recHandler := handlers.NewRecordingHandler(db)
+		protected.GET("/recordings", recHandler.List)
+		protected.GET("/recordings/:id/stream", recHandler.GetStream)
+		protected.DELETE("/recordings/:id", recHandler.Delete)
 
 		// Admin routes
 		admin := protected.Group("/users")
