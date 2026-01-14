@@ -248,8 +248,9 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 				if recordFile != nil {
 					// Store as [time_offset, "o", "data"]
 					offset := time.Since(start).Seconds()
-					entry := fmt.Sprintf("[%f, \"o\", %q]\n", offset, string(data))
-					recordFile.WriteString(entry)
+					entry, _ := json.Marshal([]interface{}{offset, "o", string(data)})
+					recordFile.Write(entry)
+					recordFile.WriteString("\n")
 				}
 				if err := ws.WriteMessage(websocket.TextMessage, data); err != nil {
 					log.Printf("Error writing to WebSocket: %v", err)

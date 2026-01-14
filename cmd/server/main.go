@@ -31,6 +31,11 @@ func main() {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
+	// Cleanup stale logs from previous run
+	if err := database.CleanupStaleLogs(db); err != nil {
+		log.Printf("Warning: Failed to cleanup stale logs: %v", err)
+	}
+
 	// Set Gin mode
 	if cfg.Server.Mode == "release" {
 		gin.SetMode(gin.ReleaseMode)

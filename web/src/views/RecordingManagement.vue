@@ -64,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, shallowRef, onMounted, nextTick } from 'vue'
 import { message } from 'ant-design-vue'
 import { PlayCircleOutlined, PauseOutlined } from '@ant-design/icons-vue'
 import { Terminal } from 'xterm'
@@ -76,8 +76,8 @@ const recordings = ref([])
 const loading = ref(false)
 const playerVisible = ref(false)
 const playerRef = ref(null)
-const terminal = ref(null)
-const fitAddon = ref(null)
+const terminal = shallowRef(null)
+const fitAddon = shallowRef(null)
 
 const playing = ref(false)
 const currentTime = ref(0)

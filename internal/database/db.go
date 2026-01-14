@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/ihxw/webssh/internal/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -63,4 +65,16 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 // GetDB returns the database instance
 func GetDB() *gorm.DB {
 	return DB
+}
+
+// CleanupStaleLogs marks orphaned connections as disconnected
+func CleanupStaleLogs(db *gorm.DB) error {
+	now := time.Now()
+	return db.Model(&models.ConnectionLog{}).
+		Where("status IN ?", []string{"connecting", "success"}).
+		Updates(map[string]interface{}{
+			"status":          "disconnected",
+			"disconnected_at": &now,
+			"error_message":   "terminated by server restart",
+		}).Error
 }

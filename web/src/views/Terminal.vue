@@ -30,6 +30,14 @@
             <ThunderboltOutlined />
             Quick Connect
           </a-button>
+
+          <a-divider type="vertical" />
+          
+          <div style="display: flex; align-items: center; gap: 4px; border: 1px solid #d9d9d9; padding: 0 8px; border-radius: 4px; background: rgba(0,0,0,0.02); height: 24px">
+            <VideoCameraOutlined :style="{ color: isRecordingEnabled ? '#ff4d4f' : '#8c8c8c' }" />
+            <span style="font-size: 12px; color: #595959">Record Next Session</span>
+            <a-switch v-model:checked="isRecordingEnabled" size="small" />
+          </div>
         </div>
       </template>
 
@@ -45,14 +53,20 @@
           <a-tab-pane
             v-for="terminal in sshStore.terminalList"
             :key="terminal.id"
-            :tab="terminal.name"
             :closable="true"
             style="flex: 1; height: 100%"
           >
+            <template #tab>
+              <div style="display: flex; align-items: center; gap: 6px">
+                <span v-if="terminal.record" class="pulsing-dot"></span>
+                {{ terminal.name }}
+              </div>
+            </template>
             <TerminalComponent
               :terminal-id="terminal.id"
               :host-id="terminal.hostId"
               :active="activeTerminalKey === terminal.id"
+              :record="terminal.record"
               @close="() => closeTerminal(terminal.id)"
             />
           </a-tab-pane>
@@ -76,7 +90,7 @@
     <!-- Host Form Modal -->
     <a-modal
       v-model:open="showHostModal"
-      :title="editingHost ? 'Edit SSH Host' : 'Add SSH Host'"
+      :title="editingHost ? 'Edit SSH Host' : (isQuickConnect ? 'Quick Connect' : 'Add SSH Host')"
       @ok="handleSaveHost"
       :confirmLoading="saving"
     >
@@ -141,7 +155,8 @@ import {
   DatabaseOutlined,
   PlusOutlined,
   ThunderboltOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  VideoCameraOutlined
 } from '@ant-design/icons-vue'
 import { useSSHStore } from '../stores/ssh'
 import TerminalComponent from '../components/Terminal.vue'
@@ -154,7 +169,9 @@ const loading = ref(false)
 const showHostModal = ref(false)
 const saving = ref(false)
 const editingHost = ref(null)
+const isRecordingEnabled = ref(false)
 
+const isQuickConnect = ref(false)
 const hostForm = ref({
   name: '',
   host: '',
@@ -214,13 +231,15 @@ const connectToHost = (host) => {
     hostId: host.id,
     name: host.name,
     host: host.host,
-    port: host.port
+    port: host.port,
+    record: isRecordingEnabled.value
   })
   activeTerminalKey.value = terminalId
 }
 
 const handleAddHost = () => {
   editingHost.value = null
+  isQuickConnect.value = false
   showHostModal.value = true
   hostForm.value = {
     name: '',
@@ -236,7 +255,20 @@ const handleAddHost = () => {
 }
 
 const handleQuickConnect = () => {
-  handleAddHost()
+  editingHost.value = null
+  isQuickConnect.value = true
+  showHostModal.value = true
+  hostForm.value = {
+    name: 'Quick Connect Session',
+    host: '',
+    port: 22,
+    username: 'root',
+    auth_type: 'password',
+    password: '',
+    private_key: '',
+    group_name: 'Temporary',
+    description: 'One-time session'
+  }
 }
 
 const handleSaveHost = async () => {
@@ -334,5 +366,26 @@ const closeTerminal = (terminalId) => {
 :deep(.ant-tabs-tabpane) {
   display: flex;
   flex-direction: column;
+}
+
+.pulsing-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #ff4d4f;
+  border-radius: 50%;
+  box-shadow: 0 0 0 rgba(255, 77, 79, 0.4);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(255, 77, 79, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0);
+  }
 }
 </style>

@@ -82,6 +82,7 @@ export const useSSHStore = defineStore('ssh', {
             const id = Date.now().toString()
             this.terminals.set(id, {
                 id,
+                record: false, // Default
                 ...terminalData,
                 createdAt: new Date()
             })

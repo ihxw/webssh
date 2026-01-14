@@ -3,11 +3,13 @@
     <div ref="terminalRef" class="terminal-container" style="flex: 1; overflow: hidden; background: #1e1e1e"></div>
     
     <div v-if="connectionStatus" class="terminal-status" style="padding: 2px 8px; background: #1f1f1f; border-top: 1px solid #303030; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; min-height: 28px">
-      <div>
+      <div style="display: flex; align-items: center">
         <a-tag :color="statusColor" size="small" style="font-size: 10px; line-height: 14px; height: 16px; margin-right: 8px">{{ connectionStatus }}</a-tag>
         <span style="color: #bbb; font-size: 11px; margin-right: 8px">{{ terminalSize }}</span>
-        <a-switch v-model:checked="isRecordingEnabled" size="small" :disabled="connectionStatus === 'Connected'" />
-        <span style="color: #bbb; font-size: 10px; margin-left: 4px">Record</span>
+        <div v-if="record" style="display: flex; align-items: center; gap: 4px; border-left: 1px solid #444; padding-left: 8px; margin-left: 0">
+          <span class="recording-dot"></span>
+          <span style="color: #ff4d4f; font-size: 11px; font-weight: bold; letter-spacing: 0.5px">RECORDING</span>
+        </div>
       </div>
       <div style="display: flex; align-items: center">
         <a-space size="small">
@@ -79,6 +81,10 @@ const props = defineProps({
   active: {
     type: Boolean,
     default: false
+  },
+  record: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -92,7 +98,6 @@ const connectionStatus = ref('Connecting...')
 const terminalSize = ref('80x24')
 const showSftp = ref(false)
 const commandTemplates = ref([])
-const isRecordingEnabled = ref(false)
 
 const statusColor = ref('processing')
 
@@ -223,7 +228,7 @@ const connectWebSocket = async () => {
     // 2. Connect via WebSocket with ticket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    const wsUrl = `${protocol}//${host}/api/ws/ssh/${props.hostId}?ticket=${ticket}${isRecordingEnabled.value ? '&record=true' : ''}`
+    const wsUrl = `${protocol}//${host}/api/ws/ssh/${props.hostId}?ticket=${ticket}${props.record ? '&record=true' : ''}`
     
     ws.value = new WebSocket(wsUrl)
 
@@ -237,6 +242,7 @@ const connectWebSocket = async () => {
     }
 
     ws.value.onmessage = (event) => {
+      if (!terminal.value) return
       try {
         const msg = JSON.parse(event.data)
         // Only treat as structured message if it's an object with a 'type' field
@@ -266,7 +272,9 @@ const connectWebSocket = async () => {
 
     ws.value.onclose = () => {
       connectionStatus.value = 'Disconnected'
-      terminal.value.writeln('\r\n\x1b[33mConnection closed\x1b[0m\r\n')
+      if (terminal.value) {
+        terminal.value.writeln('\r\n\x1b[33mConnection closed\x1b[0m\r\n')
+      }
     }
   } catch (error) {
     console.error('Failed to get WS ticket:', error)
