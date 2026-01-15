@@ -2,85 +2,85 @@
   <div style="padding: 12px">
     <a-page-header 
         @back="$router.back()" 
-        title="Network Details" 
-        :sub-title="host?.name || 'Unknown Host'"
+        :title="t('network.title')" 
+        :sub-title="host?.name || t('host.name')"
         style="padding: 0 0 12px 0"
     >
       <template #extra>
-         <a-tag color="blue" v-if="connected">Connected</a-tag>
-         <a-tag color="red" v-else>Disconnected</a-tag>
+         <a-tag color="blue" v-if="connected">{{ t('terminal.connected') }}</a-tag>
+         <a-tag color="red" v-else>{{ t('terminal.disconnected') }}</a-tag>
       </template>
     </a-page-header>
     
     <div v-if="!host" style="text-align: center; margin-top: 48px">
-        <a-spin /> Loading...
+        <a-spin /> {{ t('common.loading') }}
     </div>
 
     <a-row :gutter="12" style="margin-top: 0" v-else>
       <!-- Config -->
       <a-col :xs="24" :lg="8" style="margin-bottom: 12px">
-        <a-card title="Configuration" :bordered="false" size="small">
+        <a-card :title="t('network.configuration')" :bordered="false" size="small">
             <a-form layout="vertical" style="margin-bottom: 0">
-                <a-form-item label="Primary Interface" help="Interface used for main dashboard statistics" style="margin-bottom: 12px">
-                    <a-select v-model:value="config.net_interface_list" mode="multiple" placeholder="Select interfaces" size="small">
-                        <a-select-option value="auto">Auto (Total)</a-select-option>
+                <a-form-item :label="t('network.primaryInterface')" :help="t('network.primaryInterfaceHelp')" style="margin-bottom: 12px">
+                    <a-select v-model:value="config.net_interface_list" mode="multiple" :placeholder="t('network.selectInterfaces')" size="small">
+                        <a-select-option value="auto">{{ t('network.autoTotal') }}</a-select-option>
                         <a-select-option v-for="iface in interfaces" :key="iface.name" :value="iface.name">{{ iface.name }}</a-select-option>
                     </a-select>
                 </a-form-item>
-                <a-form-item label="Traffic Reset Day" help="Day of month to reset cycle" style="margin-bottom: 12px">
+                <a-form-item :label="t('network.resetDay')" :help="t('network.resetDayHelp')" style="margin-bottom: 12px">
                     <a-select v-model:value="config.net_reset_day" size="small">
                         <a-select-option v-for="n in 31" :key="n" :value="n">{{ n }}</a-select-option>
                     </a-select>
                 </a-form-item>
 
-                <a-divider style="margin: 12px 0">Traffic Limit</a-divider>
+                <a-divider style="margin: 12px 0">{{ t('network.trafficLimit') }}</a-divider>
 
-                <a-form-item label="Monthly Limit (GB)" help="0 for unlimited" style="margin-bottom: 12px">
+                <a-form-item :label="t('network.monthlyLimit')" :help="t('network.unlimitedHelp')" style="margin-bottom: 12px">
                     <a-input-number v-model:value="config.limit_gb" :min="0" style="width: 100%" size="small" />
                 </a-form-item>
-                 <a-form-item label="Already Used (GB)" help="Correction for current month" style="margin-bottom: 12px">
+                 <a-form-item :label="t('network.alreadyUsed')" :help="t('network.adjustmentHelp')" style="margin-bottom: 12px">
                     <a-input-number v-model:value="config.adjustment_gb" :min="0" style="width: 100%" size="small" />
                 </a-form-item>
-                 <a-form-item label="Counter Mode" help="Which traffic counts towards limit" style="margin-bottom: 12px">
+                 <a-form-item :label="t('network.counterMode')" :help="t('network.counterModeHelp')" style="margin-bottom: 12px">
                     <a-select v-model:value="config.net_traffic_counter_mode" size="small">
-                        <a-select-option value="total">Total (Upload + Download)</a-select-option>
-                        <a-select-option value="tx">Upload Only (Tx)</a-select-option>
-                        <a-select-option value="rx">Download Only (Rx)</a-select-option>
+                        <a-select-option value="total">{{ t('network.modeTotal') }}</a-select-option>
+                        <a-select-option value="tx">{{ t('network.modeTx') }}</a-select-option>
+                        <a-select-option value="rx">{{ t('network.modeRx') }}</a-select-option>
                     </a-select>
                 </a-form-item>
 
-                <a-button type="primary" @click="saveConfig" :loading="saving" block size="small">Save Configuration</a-button>
+                <a-button type="primary" @click="saveConfig" :loading="saving" block size="small">{{ t('network.saveConfig') }}</a-button>
             </a-form>
         </a-card>
         
-        <a-card title="Monthly Traffic" :bordered="false" size="small" style="margin-top: 12px">
+        <a-card :title="t('network.monthlyTraffic')" :bordered="false" size="small" style="margin-top: 12px">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px">
-                <a-statistic title="Inbound (Rx)" :value="formatBytes(monthlyRx)" :valueStyle="{ color: '#3f8600', fontSize: '16px' }">
+                <a-statistic :title="t('network.inbound')" :value="formatBytes(monthlyRx)" :valueStyle="{ color: '#3f8600', fontSize: '16px' }">
                     <template #prefix><ArrowDownOutlined /></template>
                 </a-statistic>
-                <a-statistic title="Outbound (Tx)" :value="formatBytes(monthlyTx)" :valueStyle="{ color: '#cf1322', fontSize: '16px' }">
+                <a-statistic :title="t('network.outbound')" :value="formatBytes(monthlyTx)" :valueStyle="{ color: '#cf1322', fontSize: '16px' }">
                      <template #prefix><ArrowUpOutlined /></template>
                 </a-statistic>
             </div>
             
             <div v-if="config.limit_gb > 0" style="margin-top: 12px">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px">
-                    <span>Usage ({{ usagePercentage }}%)</span>
+                    <span>{{ t('network.usage') }} ({{ usagePercentage }}%)</span>
                     <span>{{ formatBytes(totalUsedBytes) }} / {{ config.limit_gb }} GB</span>
                 </div>
                 <a-progress :percent="usagePercentage" :status="usageStatus" size="small" />
                 <div style="margin-top: 4px; font-size: 12px; color: #8c8c8c">
-                    Remaining: {{ formatBytes(remainingBytes) }}
+                    {{ t('network.remaining') }}: {{ formatBytes(remainingBytes) }}
                 </div>
             </div>
 
-             <a-alert message="Calculated based on Primary Interface" type="info" show-icon style="font-size: 12px; margin-top: 12px" />
+             <a-alert :message="t('network.calcInfo')" type="info" show-icon style="font-size: 12px; margin-top: 12px" />
         </a-card>
       </a-col>
 
       <!-- Interface List -->
       <a-col :xs="24" :lg="16">
-        <a-card title="Interfaces" :bordered="false" size="small">
+        <a-card :title="t('network.interfaces')" :bordered="false" size="small">
            <a-table :dataSource="interfaces" :columns="columns" :pagination="false" rowKey="name" size="small">
                 <template #bodyCell="{ column, record }">
                     <template v-if="column.key === 'name'">
@@ -114,7 +114,9 @@ import { useRoute } from 'vue-router'
 import { useSSHStore } from '../stores/ssh'
 import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const route = useRoute()
 const sshStore = useSSHStore()
 const hostId = parseInt(route.params.id)
@@ -202,11 +204,11 @@ const usageStatus = computed(() => {
 })
 
 
-const columns = [
-    { title: 'Interface', key: 'name', dataIndex: 'name' },
-    { title: 'Real-time Speed', key: 'speed' },
-    { title: 'Total Traffic (Since Boot)', key: 'total' },
-]
+const columns = computed(() => [
+    { title: t('network.interfaceName'), key: 'name', dataIndex: 'name' },
+    { title: t('network.realTimeSpeed'), key: 'speed' },
+    { title: t('network.totalTraffic'), key: 'total' },
+])
 
 const formatBytes = (bytes) => {
   if (bytes === 0) return '0 B'

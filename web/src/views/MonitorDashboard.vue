@@ -35,14 +35,14 @@
                 <span>{{ host.os || 'Linux' }}</span>
               </div>
               <div style="margin-top: 4px">
-                Uptime: {{ formatUptime(host.uptime) }}
+                {{ t('monitor.uptime') }}: {{ formatUptime(host.uptime) }}
               </div>
             </div>
 
             <!-- CPU -->
             <div style="margin-bottom: 8px">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
-                <span>CPU</span>
+                <span>{{ t('monitor.cpu') }}</span>
                 <span>{{ host.cpu }}%</span>
               </div>
               <a-progress :percent="host.cpu" :status="getStatus(host.cpu)" :show-info="false" stroke-linecap="square" />
@@ -51,7 +51,7 @@
             <!-- RAM -->
             <div style="margin-bottom: 8px">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
-                <span>RAM</span>
+                <span>{{ t('monitor.ram') }}</span>
                 <span>{{ formatPct(host.mem_used, host.mem_total) }}%</span>
               </div>
               <a-progress :percent="calcPct(host.mem_used, host.mem_total)" :status="getStatus(calcPct(host.mem_used, host.mem_total))" :show-info="false" stroke-linecap="square" />
@@ -63,7 +63,7 @@
             <!-- Disk -->
              <div style="margin-bottom: 8px">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
-                <span>Disk (/)</span>
+                <span>{{ t('monitor.disk') }} (/)</span>
                 <span>{{ formatPct(host.disk_used, host.disk_total) }}%</span>
               </div>
               <a-progress :percent="calcPct(host.disk_used, host.disk_total)" :show-info="false" stroke-linecap="square" />
@@ -76,18 +76,18 @@
             <div style="margin-top: 8px; display: flex; justify-content: space-between; font-size: 12px">
               <div style="text-align: center">
                 <div style="color: #52c41a"><ArrowDownOutlined /> {{ formatSpeed(host.net_rx_rate || 0) }}</div>
-                <div style="color: #8c8c8c">Total: {{ formatBytes(host.net_rx) }}</div>
+                <div style="color: #8c8c8c">{{ t('monitor.total') }}: {{ formatBytes(host.net_rx) }}</div>
               </div>
               <div style="text-align: center">
                 <div style="color: #1890ff"><ArrowUpOutlined /> {{ formatSpeed(host.net_tx_rate || 0) }}</div>
-                <div style="color: #8c8c8c">Total: {{ formatBytes(host.net_tx) }}</div>
+                <div style="color: #8c8c8c">{{ t('monitor.total') }}: {{ formatBytes(host.net_tx) }}</div>
               </div>
             </div>
             
             <!-- Traffic Usage (If Limit Set) -->
             <div v-if="host.net_traffic_limit > 0" style="margin-top: 8px; border-top: 1px solid #f0f0f0; padding-top: 8px">
                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px">
-                  <span>Usage ({{ getTrafficUsagePct(host) }}%)</span>
+                  <span>{{ t('network.usage') }} ({{ getTrafficUsagePct(host) }}%)</span>
                   <span>{{ formatTrafficUsage(host) }}</span>
                </div>
                <a-progress :percent="getTrafficUsagePct(host)" :status="getStatus(getTrafficUsagePct(host))" :show-info="false" stroke-linecap="square" size="small" />
@@ -107,7 +107,9 @@
 import { ref, onMounted, onUnmounted, computed, h } from 'vue'
 import { useSSHStore } from '../stores/ssh'
 import { ArrowDownOutlined, ArrowUpOutlined, AppleOutlined, WindowsOutlined, DesktopOutlined, LineChartOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const sshStore = useSSHStore()
 
 const hosts = ref([])
