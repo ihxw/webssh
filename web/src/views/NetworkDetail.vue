@@ -1,6 +1,11 @@
 <template>
-  <div style="padding: 24px">
-    <a-page-header @back="$router.back()" title="Network Details" :sub-title="host?.name || 'Unknown Host'">
+  <div style="padding: 12px">
+    <a-page-header 
+        @back="$router.back()" 
+        title="Network Details" 
+        :sub-title="host?.name || 'Unknown Host'"
+        style="padding: 0 0 12px 0"
+    >
       <template #extra>
          <a-tag color="blue" v-if="connected">Connected</a-tag>
          <a-tag color="red" v-else>Disconnected</a-tag>
@@ -11,7 +16,7 @@
         <a-spin /> Loading...
     </div>
 
-    <a-row :gutter="12" style="margin-top: 12px" v-else>
+    <a-row :gutter="12" style="margin-top: 0" v-else>
       <!-- Config -->
       <a-col :xs="24" :lg="8" style="margin-bottom: 12px">
         <a-card title="Configuration" :bordered="false" size="small">
