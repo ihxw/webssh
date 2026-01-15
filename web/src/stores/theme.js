@@ -4,6 +4,7 @@ import { theme } from 'ant-design-vue'
 export const useThemeStore = defineStore('theme', {
     state: () => ({
         isDark: false, // Default to light theme
+        terminalTheme: 'auto',
     }),
 
     getters: {
@@ -35,6 +36,15 @@ export const useThemeStore = defineStore('theme', {
             if (savedTheme) {
                 this.isDark = savedTheme === 'dark'
             }
+            const savedTerminalTheme = localStorage.getItem('terminalTheme')
+            if (savedTerminalTheme) {
+                this.terminalTheme = savedTerminalTheme
+            }
+        },
+
+        setTerminalTheme(themeName) {
+            this.terminalTheme = themeName
+            localStorage.setItem('terminalTheme', themeName)
         }
     }
 })

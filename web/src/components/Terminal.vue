@@ -88,6 +88,7 @@ import SftpBrowser from './SftpBrowser.vue'
 import 'xterm/css/xterm.css'
 
 import { useThemeStore } from '../stores/theme'
+import { terminalThemes } from '../utils/terminalThemes'
 
 const props = defineProps({
   hostId: {
@@ -118,62 +119,28 @@ const commandTemplates = ref([])
 
 const statusColor = ref('processing')
 
-watch(() => themeStore.isDark, (isDark) => {
+watch([() => themeStore.isDark, () => themeStore.terminalTheme], ([isDark, terminalTheme]) => {
   if (terminal.value) {
-    updateTerminalTheme(isDark)
+    updateTerminalTheme(isDark, terminalTheme)
   }
 })
 
 // ... watchers for active/status ...
 
-const updateTerminalTheme = (isDark) => {
+const updateTerminalTheme = (isDark, terminalTheme = null) => {
   if (!terminal.value) return
-  
-  const theme = isDark ? {
-      background: '#1e1e1e',
-      foreground: '#ffffff',
-      cursor: '#ffffff',
-      selection: '#ffffff40',
-      black: '#000000',
-      red: '#e06c75',
-      green: '#98c379',
-      yellow: '#d19a66',
-      blue: '#61afef',
-      magenta: '#c678dd',
-      cyan: '#56b6c2',
-      white: '#abb2bf',
-      brightBlack: '#5c6370',
-      brightRed: '#e06c75',
-      brightGreen: '#98c379',
-      brightYellow: '#d19a66',
-      brightBlue: '#61afef',
-      brightMagenta: '#c678dd',
-      brightCyan: '#56b6c2',
-      brightWhite: '#ffffff'
-  } : {
-      background: '#ffffff',
-      foreground: '#333333',
-      cursor: '#333333',
-      selection: '#00000040',
-      black: '#000000',
-      red: '#cd3131',
-      green: '#0dbc79',
-      yellow: '#e5e510',
-      blue: '#2472c8',
-      magenta: '#bc3fbc',
-      cyan: '#11a8cd',
-      white: '#e5e5e5',
-      brightBlack: '#666666',
-      brightRed: '#cd3131',
-      brightGreen: '#14ce14',
-      brightYellow: '#b5ba00',
-      brightBlue: '#0451a5',
-      brightMagenta: '#bc3fbc',
-      brightCyan: '#0598bc',
-      brightWhite: '#a5a5a5'
+
+  const themeName = terminalTheme || themeStore.terminalTheme || 'auto'
+  let themeConfig
+
+  if (themeName !== 'auto' && terminalThemes[themeName]) {
+    themeConfig = { ...terminalThemes[themeName].colors }
+  } else {
+    // Auto mode
+    themeConfig = isDark ? { ...terminalThemes.dracula.colors } : { ...terminalThemes.githubLight.colors }
   }
-  
-  terminal.value.options.theme = theme
+
+  terminal.value.options.theme = themeConfig
 }
 
 const handleQuickCommand = ({ key }) => {
@@ -202,7 +169,7 @@ const initTerminal = () => {
     logLevel: 'info'
   })
   
-  updateTerminalTheme(themeStore.isDark)
+  updateTerminalTheme(themeStore.isDark, themeStore.terminalTheme)
 
   // ... rest of init ...
 

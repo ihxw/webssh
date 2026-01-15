@@ -32,6 +32,32 @@
           </a-button>
 
           <a-divider type="vertical" />
+
+          <a-dropdown>
+            <a-button size="small">
+              <BgColorsOutlined />
+              {{ t('terminal.theme') }}
+            </a-button>
+            <template #overlay>
+              <a-menu :selectedKeys="[themeStore.terminalTheme || 'auto']" @click="({ key }) => themeStore.setTerminalTheme(key)">
+                <a-menu-item key="auto">
+                  <div style="display: flex; justify-content: space-between; align-items: center; width: 150px">
+                    {{ t('terminal.themeAuto') }}
+                    <CheckOutlined v-if="themeStore.terminalTheme === 'auto' || !themeStore.terminalTheme" />
+                  </div>
+                </a-menu-item>
+                <a-menu-divider />
+                <a-menu-item v-for="(theme, key) in terminalThemes" :key="key" v-show="key !== 'auto'">
+                  <div style="display: flex; justify-content: space-between; align-items: center; width: 150px">
+                    {{ theme.name }}
+                    <CheckOutlined v-if="themeStore.terminalTheme === key" />
+                  </div>
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+
+          <a-divider type="vertical" />
           
           <div style="display: flex; align-items: center; gap: 4px; border: 1px solid #d9d9d9; padding: 0 8px; border-radius: 4px; background: rgba(0,0,0,0.02); height: 24px">
             <VideoCameraOutlined :style="{ color: isRecordingEnabled ? '#ff4d4f' : '#8c8c8c' }" />
@@ -158,12 +184,15 @@ import {
   PlusOutlined,
   ThunderboltOutlined,
   ExclamationCircleOutlined,
-  VideoCameraOutlined
+  VideoCameraOutlined,
+  BgColorsOutlined,
+  CheckOutlined
 } from '@ant-design/icons-vue'
 import { useSSHStore } from '../stores/ssh'
 import { useThemeStore } from '../stores/theme'
 import { useI18n } from 'vue-i18n'
 import TerminalComponent from '../components/Terminal.vue'
+import { terminalThemes } from '../utils/terminalThemes'
 
 const { t } = useI18n()
 const sshStore = useSSHStore()

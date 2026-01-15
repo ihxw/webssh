@@ -71,7 +71,9 @@ export default {
         sessionAlreadyOpen: 'A session for "{name}" is already open. Would you like to switch to the existing tab or open a new one?',
         quickConnectSession: 'Quick Connect Session',
         temporaryGroup: 'Temporary',
-        onetimeSession: 'One-time session'
+        onetimeSession: 'One-time session',
+        theme: 'Theme',
+        themeAuto: 'Auto (Follow System)'
     },
     host: {
         name: 'Name',

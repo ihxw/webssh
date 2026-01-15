@@ -71,7 +71,9 @@ export default {
         sessionAlreadyOpen: '主机 "{name}" 的会话已打开。您想切换到现有标签页还是打开新标签页？',
         quickConnectSession: '快速连接会话',
         temporaryGroup: '临时',
-        onetimeSession: '一次性会话'
+        onetimeSession: '一次性会话',
+        theme: '主题',
+        themeAuto: '自动 (跟随系统)'
     },
     host: {
         name: '名称',
