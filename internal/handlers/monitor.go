@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -149,9 +150,6 @@ func (h *MonitorHandler) Pulse(c *gin.Context) {
 	}
 	secret := authHeader[7:]
 
-	// Validate secret against generic verification (optimize: cache secrets?)
-	// For now, assume if ID matches header, we verify DB.
-	// But JSON body isn't parsed yet.
 	var data monitor.MetricData
 	if err := c.ShouldBindJSON(&data); err != nil {
 		log.Printf("Monitor Pulse: Bind JSON failed: %v", err)
@@ -161,7 +159,7 @@ func (h *MonitorHandler) Pulse(c *gin.Context) {
 
 	// Verify Host and Secret
 	var host models.SSHHost
-	if err := h.DB.Select("monitor_secret, monitor_enabled").First(&host, data.HostID).Error; err != nil {
+	if err := h.DB.Select("*").First(&host, data.HostID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Host not found"})
 		return
 	}
@@ -170,6 +168,113 @@ func (h *MonitorHandler) Pulse(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Invalid secret or monitoring disabled"})
 		return
 	}
+
+	// Network Traffic Calculation
+	var currentRx, currentTx uint64
+
+	// 1. Determine which interface to track
+	if host.NetInterface != "" && host.NetInterface != "auto" {
+		targetInterfaces := strings.Split(host.NetInterface, ",")
+		foundAny := false
+
+		for _, target := range targetInterfaces {
+			target = strings.TrimSpace(target)
+			for _, iface := range data.Interfaces {
+				if iface.Name == target {
+					currentRx += iface.Rx
+					currentTx += iface.Tx
+					foundAny = true
+					break // Found this target, move to next target
+				}
+			}
+		}
+
+		// If specified interfaces not found, fallback to total or keep 0?
+		// Better fallback to total to avoid plotting 0 if config is stale.
+		if !foundAny {
+			currentRx = data.NetRx
+			currentTx = data.NetTx
+		}
+	} else {
+		// Auto: Use Total
+		currentRx = data.NetRx
+		currentTx = data.NetTx
+	}
+
+	// 2. Check for Reset Day logic
+	now := time.Now()
+	todayStr := now.Format("2006-01-02")
+
+	dbUpdated := false
+
+	// Reset Day Check: If today is reset day and we haven't reset yet today
+	if now.Day() == host.NetResetDay && host.NetLastResetDate != todayStr {
+		host.NetMonthlyRx = 0
+		host.NetMonthlyTx = 0
+		host.NetLastResetDate = todayStr
+		dbUpdated = true
+	}
+
+	// 3. Delta Calculation (Accumulation)
+	var deltaRx, deltaTx uint64
+
+	// If LastRaw is 0 (first run or just reset?), we can't calculate delta reliably if agent is already running high numbers.
+	// But usually we set LastRaw = Current on first run.
+	// To handle initialization: if LastRaw == 0, assume Delta = 0 (or just skip accumulation for this first tick to be safe against huge spike).
+	// But if agent is fresh (0), Delta is 0.
+	// If agent is long running, Current is huge. Delta = Current - 0 = Huge.
+	// We don't want to add huge "Baseline" to Monthly.
+	// So: If NetLastRaw == 0, we just sync LastRaw = Current, and Delta = 0.
+	// UNLESS NetMonthly is ALSO 0 (Fresh start), then maybe we want to start from 0?
+	// Safest: On first pulse (LastRaw=0), don't accumulate delta, just sync.
+
+	if host.NetLastRawRx > 0 {
+		if currentRx >= host.NetLastRawRx {
+			deltaRx = currentRx - host.NetLastRawRx
+		} else {
+			// Reboot detected (Current < Last)
+			// Assume all Current is new traffic since reboot
+			deltaRx = currentRx
+		}
+	}
+	// If LastRawRx == 0, we treat deltaRx as 0 (skip first tick) to avoid adding existing total counters.
+
+	if host.NetLastRawTx > 0 {
+		if currentTx >= host.NetLastRawTx {
+			deltaTx = currentTx - host.NetLastRawTx
+		} else {
+			deltaTx = currentTx
+		}
+	}
+
+	if deltaRx > 0 || deltaTx > 0 {
+		host.NetMonthlyRx += deltaRx
+		host.NetMonthlyTx += deltaTx
+		dbUpdated = true
+	}
+
+	// Always update LastRaw
+	if host.NetLastRawRx != currentRx || host.NetLastRawTx != currentTx {
+		host.NetLastRawRx = currentRx
+		host.NetLastRawTx = currentTx
+		dbUpdated = true
+	}
+
+	if dbUpdated {
+		h.DB.Save(&host)
+	}
+
+	// 4. Update Data for View
+	data.NetMonthlyRx = host.NetMonthlyRx
+	data.NetMonthlyTx = host.NetMonthlyTx
+	// Pass Config to Frontend
+	data.NetTrafficLimit = host.NetTrafficLimit
+	data.NetTrafficUsedAdjustment = host.NetTrafficUsedAdjustment
+	data.NetTrafficCounterMode = host.NetTrafficCounterMode
+
+	// DEBUG: Print values to verify logic
+	log.Printf("VERIFY_ME HOST %d: MonthlyRx=%d (DeltaRx=%d), LastRawRx=%d, CurrentRx=%d", host.ID, host.NetMonthlyRx, deltaRx, host.NetLastRawRx, currentRx)
+	log.Printf("VERIFY_ME DATA TO HUB: NetMonthlyRx=%d", data.NetMonthlyRx)
 
 	monitor.GlobalHub.Update(data)
 

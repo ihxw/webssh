@@ -9,22 +9,40 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// InterfaceData holds per-interface metrics
+type InterfaceData struct {
+	Name string `json:"name"`
+	Rx   uint64 `json:"rx"`
+	Tx   uint64 `json:"tx"`
+	// Derived rates
+	RxRate uint64 `json:"rx_rate"`
+	TxRate uint64 `json:"tx_rate"`
+}
+
 // MetricData represents the data packet sent by the agent
 type MetricData struct {
-	HostID      uint    `json:"host_id"`
-	Uptime      uint64  `json:"uptime"`      // Seconds
-	CPU         float64 `json:"cpu"`         // Percentage
-	MemUsed     uint64  `json:"mem_used"`    // Bytes
-	MemTotal    uint64  `json:"mem_total"`   // Bytes
-	DiskUsed    uint64  `json:"disk_used"`   // Bytes
-	DiskTotal   uint64  `json:"disk_total"`  // Bytes
-	NetRx       uint64  `json:"net_rx"`      // Total Bytes In
-	NetTx       uint64  `json:"net_tx"`      // Total Bytes Out
-	NetRxRate   uint64  `json:"net_rx_rate"` // Bytes/sec
-	NetTxRate   uint64  `json:"net_tx_rate"` // Bytes/sec
-	OS          string  `json:"os"`
-	Hostname    string  `json:"hostname"`
-	LastUpdated int64   `json:"last_updated"`
+	HostID       uint    `json:"host_id"`
+	Uptime       uint64  `json:"uptime"`      // Seconds
+	CPU          float64 `json:"cpu"`         // Percentage
+	MemUsed      uint64  `json:"mem_used"`    // Bytes
+	MemTotal     uint64  `json:"mem_total"`   // Bytes
+	DiskUsed     uint64  `json:"disk_used"`   // Bytes
+	DiskTotal    uint64  `json:"disk_total"`  // Bytes
+	NetRx        uint64  `json:"net_rx"`      // Total Bytes In
+	NetTx        uint64  `json:"net_tx"`      // Total Bytes Out
+	NetRxRate    uint64  `json:"net_rx_rate"` // Bytes/sec (Total)
+	NetTxRate    uint64  `json:"net_tx_rate"` // Bytes/sec (Total)
+	NetMonthlyRx uint64  `json:"net_monthly_rx"`
+	NetMonthlyTx uint64  `json:"net_monthly_tx"`
+	// Config for Frontend Calculation
+	NetTrafficLimit          uint64 `json:"net_traffic_limit"`
+	NetTrafficUsedAdjustment uint64 `json:"net_traffic_used_adjustment"`
+	NetTrafficCounterMode    string `json:"net_traffic_counter_mode"` // total, rx, tx
+
+	Interfaces  []InterfaceData `json:"interfaces"` // Per Interface
+	OS          string          `json:"os"`
+	Hostname    string          `json:"hostname"`
+	LastUpdated int64           `json:"last_updated"`
 }
 
 type Hub struct {
@@ -65,6 +83,22 @@ func (h *Hub) Run() {
 				if timeDiff > 0 {
 					data.NetRxRate = (data.NetRx - prev.NetRx) / uint64(timeDiff)
 					data.NetTxRate = (data.NetTx - prev.NetTx) / uint64(timeDiff)
+
+					// Calculate per-interface rates
+					for i, iface := range data.Interfaces {
+						// Find corresponding interface in prev
+						for _, prevIface := range prev.Interfaces {
+							if prevIface.Name == iface.Name {
+								if iface.Rx >= prevIface.Rx {
+									data.Interfaces[i].RxRate = (iface.Rx - prevIface.Rx) / uint64(timeDiff)
+								}
+								if iface.Tx >= prevIface.Tx {
+									data.Interfaces[i].TxRate = (iface.Tx - prevIface.Tx) / uint64(timeDiff)
+								}
+								break
+							}
+						}
+					}
 				}
 			}
 			// Important: Create a copy to avoid pointer aliasing if compiled with variable reuse optimization

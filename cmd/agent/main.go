@@ -16,19 +16,27 @@ import (
 	"time"
 )
 
+// InterfaceData holds per-interface metrics
+type InterfaceData struct {
+	Name string `json:"name"`
+	Rx   uint64 `json:"rx"`
+	Tx   uint64 `json:"tx"`
+}
+
 // MetricData matches the webssh backend struct
 type MetricData struct {
-	HostID    uint64  `json:"host_id"`
-	Uptime    uint64  `json:"uptime"`
-	CPU       float64 `json:"cpu"`
-	MemUsed   uint64  `json:"mem_used"`
-	MemTotal  uint64  `json:"mem_total"`
-	DiskUsed  uint64  `json:"disk_used"`
-	DiskTotal uint64  `json:"disk_total"`
-	NetRx     uint64  `json:"net_rx"`
-	NetTx     uint64  `json:"net_tx"`
-	OS        string  `json:"os"`
-	Hostname  string  `json:"hostname"`
+	HostID     uint64          `json:"host_id"`
+	Uptime     uint64          `json:"uptime"`
+	CPU        float64         `json:"cpu"`
+	MemUsed    uint64          `json:"mem_used"`
+	MemTotal   uint64          `json:"mem_total"`
+	DiskUsed   uint64          `json:"disk_used"`
+	DiskTotal  uint64          `json:"disk_total"`
+	NetRx      uint64          `json:"net_rx"` // Sum of all interfaces
+	NetTx      uint64          `json:"net_tx"` // Sum of all interfaces
+	Interfaces []InterfaceData `json:"interfaces"`
+	OS         string          `json:"os"`
+	Hostname   string          `json:"hostname"`
 }
 
 var (
@@ -228,29 +236,33 @@ func getNetwork(data *MetricData) {
 		return
 	}
 
+	data.NetRx = 0 // Reset total Rx/Tx before recalculating
+	data.NetTx = 0
+	data.Interfaces = []InterfaceData{}
+
 	lines := strings.Split(string(content), "\n")
 	for _, line := range lines {
-		if strings.Contains(line, ":") && !strings.Contains(line, "lo:") {
-			parts := strings.Fields(line)
-			if len(parts) < 10 {
-				continue
-			}
-
-			// Field 1 is values (sometimes merged with interface name)
-			// Actually reliable parsing needs regex or careful split
-			// But usually it's: interfacename: rx_bytes ... tx_bytes
-
-			// Handle "eth0: 1234" vs "eth0:1234"
+		if strings.Contains(line, ":") {
+			// Clean up line: Replace first colon with space to handle "eth0:123" vs "eth0: 123"
 			cleanLine := strings.Replace(line, ":", " ", 1)
 			fields := strings.Fields(cleanLine)
 
 			// fields[0] is name, fields[1] is rx_bytes, fields[9] is tx_bytes
 			if len(fields) >= 10 {
+				name := fields[0]
 				rx, _ := strconv.ParseUint(fields[1], 10, 64)
 				tx, _ := strconv.ParseUint(fields[9], 10, 64)
 
-				data.NetRx += rx
-				data.NetTx += tx
+				if name != "lo" {
+					data.NetRx += rx
+					data.NetTx += tx
+				}
+
+				data.Interfaces = append(data.Interfaces, InterfaceData{
+					Name: name,
+					Rx:   rx,
+					Tx:   tx,
+				})
 			}
 		}
 	}

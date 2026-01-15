@@ -37,6 +37,12 @@ const routes = [
                 meta: { requiresAuth: true }
             },
             {
+                path: 'monitor/:id/network',
+                name: 'NetworkDetail',
+                component: () => import('../views/NetworkDetail.vue'),
+                meta: { requiresAuth: true }
+            },
+            {
                 path: 'history',
                 name: 'ConnectionHistory',
                 component: () => import('../views/ConnectionHistory.vue'),

@@ -50,6 +50,13 @@ type UpdateSSHHostRequest struct {
 	GroupName   string `json:"group_name"`
 	Tags        string `json:"tags"`
 	Description string `json:"description"`
+	// Network Config
+	NetInterface string `json:"net_interface"`
+	NetResetDay  int    `json:"net_reset_day"`
+	// Traffic Limit Config
+	NetTrafficLimit          uint64 `json:"net_traffic_limit"`
+	NetTrafficUsedAdjustment uint64 `json:"net_traffic_used_adjustment"`
+	NetTrafficCounterMode    string `json:"net_traffic_counter_mode"` // total, rx, tx
 }
 
 // List returns a list of SSH hosts for the current user
@@ -213,6 +220,52 @@ func (h *SSHHostHandler) Update(c *gin.Context) {
 	}
 	if req.Description != "" {
 		host.Description = req.Description
+	}
+	// Network Config
+	if req.NetInterface != "" {
+		// If interface selection changed, we MUST reset LastRaw to avoid massive delta spikes
+		// (false positive reboot or huge jump)
+		if host.NetInterface != req.NetInterface {
+			host.NetLastRawRx = 0
+			host.NetLastRawTx = 0
+
+			// Optional: Should we also reset Monthly?
+			// No, user might just be refining selection.
+			// But the accumulated data might be mixed.
+			// Ideally we keep monthly but stop the spike.
+		}
+		host.NetInterface = req.NetInterface
+	}
+	if req.NetResetDay > 0 && req.NetResetDay <= 31 {
+		host.NetResetDay = req.NetResetDay
+	}
+
+	// Limit config (0 is valid for Limit/Adjustment, so check presence? JSON unmarshal defaults to 0.
+	// Since 0 is meaningful (unlimited or reset adjustment), we might need pointer or just overwrite.
+	// For simplicity, we overwrite if present in struct (JSON 0 overwrites).
+	// Actually ShouldBindJSON overwrites with 0 if missing? No, 0 is default.
+	// But Update logic usually checks for non-zero.
+	// To support setting to 0, we can't just check != 0.
+	// However, for typical update flow, we send all fields or patch.
+	// Our `Update` handler checks `if req.Field != ""`.
+	// For numeric fields like NetTrafficLimit, we can't distinguish 0 vs missing.
+	// BUT, our current frontend will send valid values.
+	// Let's assume if it is part of the request we want to update it.
+	// But Go structs don't show "missing".
+	// Best practice: Use pointers in struct for optional updates, OR since this is a dedicated config form update,
+	// we assume the user intends to set the value.
+	// BUT, this handler is general purpose.
+	// A simple workaround for this specific "Config Form" usage:
+	// If `NetTrafficCounterMode` is provided (non-empty), we assume it's a Limit config update
+	// and update the numeric fields too (even if 0).
+	// Or we just update them.
+
+	if req.NetTrafficLimit > 0 || req.NetTrafficUsedAdjustment > 0 || req.NetTrafficCounterMode != "" {
+		host.NetTrafficLimit = req.NetTrafficLimit
+		host.NetTrafficUsedAdjustment = req.NetTrafficUsedAdjustment
+		if req.NetTrafficCounterMode != "" {
+			host.NetTrafficCounterMode = req.NetTrafficCounterMode
+		}
 	}
 
 	// Update encrypted credentials if provided

@@ -19,6 +19,13 @@
               <span style="color: #8c8c8c; font-size: 12px">({{ host.hostname }})</span>
             </a-space>
           </template>
+          <template #extra>
+             <a-tooltip title="Network Details">
+                <a-button type="text" shape="circle" @click="$router.push({ name: 'NetworkDetail', params: { id: host.host_id } })">
+                    <template #icon><LineChartOutlined /></template>
+                </a-button>
+             </a-tooltip>
+          </template>
           
           <div class="card-content">
             <!-- OS & Uptime -->
@@ -76,6 +83,15 @@
                 <div style="color: #8c8c8c">Total: {{ formatBytes(host.net_tx) }}</div>
               </div>
             </div>
+            
+            <!-- Traffic Usage (If Limit Set) -->
+            <div v-if="host.net_traffic_limit > 0" style="margin-top: 8px; border-top: 1px solid #f0f0f0; padding-top: 8px">
+               <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px">
+                  <span>Usage ({{ getTrafficUsagePct(host) }}%)</span>
+                  <span>{{ formatTrafficUsage(host) }}</span>
+               </div>
+               <a-progress :percent="getTrafficUsagePct(host)" :status="getStatus(getTrafficUsagePct(host))" :show-info="false" stroke-linecap="square" size="small" />
+            </div>
           </div>
         </a-card>
       </a-col>
@@ -90,7 +106,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, h } from 'vue'
 import { useSSHStore } from '../stores/ssh'
-import { ArrowDownOutlined, ArrowUpOutlined, AppleOutlined, WindowsOutlined, DesktopOutlined } from '@ant-design/icons-vue'
+import { ArrowDownOutlined, ArrowUpOutlined, AppleOutlined, WindowsOutlined, DesktopOutlined, LineChartOutlined } from '@ant-design/icons-vue'
 
 const sshStore = useSSHStore()
 
@@ -164,6 +180,39 @@ const formatBytes = (bytes) => {
 
 const formatSpeed = (bytesPerSec) => {
   return formatBytes(bytesPerSec) + '/s'
+}
+
+const getTrafficUsagePct = (host) => {
+    if (!host.net_traffic_limit) return 0
+    
+    let measured = 0
+    if (host.net_traffic_counter_mode === 'rx') {
+        measured = host.net_monthly_rx || 0
+    } else if (host.net_traffic_counter_mode === 'tx') {
+        measured = host.net_monthly_tx || 0
+    } else {
+        measured = (host.net_monthly_rx || 0) + (host.net_monthly_tx || 0)
+    }
+    
+    const used = measured + (host.net_traffic_used_adjustment || 0)
+    const pct = Math.round((used / host.net_traffic_limit) * 100)
+    return pct > 100 ? 100 : pct
+}
+
+const formatTrafficUsage = (host) => {
+    if (!host.net_traffic_limit) return ''
+     let measured = 0
+    if (host.net_traffic_counter_mode === 'rx') {
+        measured = host.net_monthly_rx || 0
+    } else if (host.net_traffic_counter_mode === 'tx') {
+        measured = host.net_monthly_tx || 0
+    } else {
+        measured = (host.net_monthly_rx || 0) + (host.net_monthly_tx || 0)
+    }
+    const used = measured + (host.net_traffic_used_adjustment || 0)
+    
+    // Format to GB if limit is in GB
+    return formatBytes(used) + ' / ' + formatBytes(host.net_traffic_limit)
 }
 
 const connect = () => {
