@@ -22,7 +22,7 @@
           
           <div class="card-content">
             <!-- OS & Uptime -->
-            <div style="margin-bottom: 16px; font-size: 12px; color: #8c8c8c">
+            <div style="margin-bottom: 8px; font-size: 12px; color: #8c8c8c">
               <div style="display: flex; align-items: center; gap: 8px">
                 <OSIcon :os="host.os" />
                 <span>{{ host.os || 'Linux' }}</span>
@@ -33,7 +33,7 @@
             </div>
 
             <!-- CPU -->
-            <div style="margin-bottom: 12px">
+            <div style="margin-bottom: 8px">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
                 <span>CPU</span>
                 <span>{{ host.cpu }}%</span>
@@ -42,7 +42,7 @@
             </div>
 
             <!-- RAM -->
-            <div style="margin-bottom: 12px">
+            <div style="margin-bottom: 8px">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
                 <span>RAM</span>
                 <span>{{ formatPct(host.mem_used, host.mem_total) }}%</span>
@@ -54,16 +54,19 @@
             </div>
 
             <!-- Disk -->
-             <div style="margin-bottom: 12px">
+             <div style="margin-bottom: 8px">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
                 <span>Disk (/)</span>
                 <span>{{ formatPct(host.disk_used, host.disk_total) }}%</span>
               </div>
               <a-progress :percent="calcPct(host.disk_used, host.disk_total)" :show-info="false" stroke-linecap="square" />
+              <div style="font-size: 10px; color: #bfbfbf; text-align: right">
+                {{ formatBytes(host.disk_used) }} / {{ formatBytes(host.disk_total) }}
+              </div>
             </div>
 
             <!-- Network -->
-            <div style="margin-top: 16px; display: flex; justify-content: space-between; font-size: 12px">
+            <div style="margin-top: 8px; display: flex; justify-content: space-between; font-size: 12px">
               <div style="text-align: center">
                 <div style="color: #52c41a"><ArrowDownOutlined /> {{ formatSpeed(host.net_rx_rate || 0) }}</div>
                 <div style="color: #8c8c8c">Total: {{ formatBytes(host.net_rx) }}</div>
@@ -108,7 +111,7 @@ const getOsIcon = (os) => {
 }
 
 onMounted(() => {
-  sshStore.loadHosts()
+  sshStore.fetchHosts()
   connect()
 })
 // Mock for OSIcon component

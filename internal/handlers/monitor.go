@@ -5,10 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
-	"text/template"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -238,43 +238,17 @@ func (h *MonitorHandler) Deploy(c *gin.Context) {
 	rand.Read(randomBytes)
 	secret := hex.EncodeToString(randomBytes)
 
-	// Save Secret to DB (but not enabled yet, or keep enabled false)
-	// We need to save the secret so the agent can authenticate if it starts immediately
 	host.MonitorSecret = secret
-	// host.MonitorEnabled = false // Keep false until success
 	h.DB.Save(&host)
 
-	// Prepare Script
-	// Infer Server URL from request Host if possible, or Config
+	// Prepare Server URL
 	scheme := "http"
 	if c.Request.TLS != nil {
 		scheme = "https"
 	}
 	serverURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
 
-	// If using dev proxy (port 5173 -> 8080), we might need correction.
-	// But usually this request comes to backend port directly or via Nginx.
-	// Let's rely on c.Request.Host which is likely what the browser sees.
-
-	// Better: Use a config setting if behind proxy. For now, best effort.
-
-	tmpl, err := template.New("agent").Parse(agentScriptTmpl)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Template error"})
-		return
-	}
-
-	var scriptBuf bytes.Buffer
-	if err := tmpl.Execute(&scriptBuf, map[string]interface{}{
-		"ServerURL": serverURL,
-		"Secret":    secret,
-		"HostID":    host.ID,
-	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Template execute error"})
-		return
-	}
-
-	// Connect SSH (Need decrypted keys or password)
+	// Connect SSH
 	password, _ := utils.DecryptAES(host.PasswordEncrypted, h.Config.Security.EncryptionKey)
 	privateKey, _ := utils.DecryptAES(host.PrivateKeyEncrypted, h.Config.Security.EncryptionKey)
 
@@ -304,12 +278,41 @@ func (h *MonitorHandler) Deploy(c *gin.Context) {
 	}
 	defer client.Close()
 
-	// 1. Upload Script
+	// 1. Detect Architecture
 	session, _ := client.NewSession()
-	defer session.Close()
+	output, err := session.Output("uname -m")
+	session.Close()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to detect remote architecture"})
+		return
+	}
+	arch := string(bytes.TrimSpace(output))
 
-	// We use cat to write file. Simple and effective for text files.
-	// Ensure directory exists
+	// Map uname -m to Go ARCH
+	var goArch string
+	switch arch {
+	case "x86_64", "amd64":
+		goArch = "amd64"
+	case "aarch64", "arm64":
+		goArch = "arm64"
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported architecture: %s", arch)})
+		return
+	}
+
+	// Select local binary
+	localBinaryPath := fmt.Sprintf("agents/termiscope-agent-linux-%s", goArch)
+	// Check if exists
+	binaryContent, err := ioutil.ReadFile(localBinaryPath)
+	if err != nil {
+		log.Printf("Monitor Deploy: Binary not found: %s", localBinaryPath)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Agent binary for %s not found on server", goArch)})
+		return
+	}
+
+	// 2. Upload Binary
+	session, _ = client.NewSession()
+	// Create dir
 	setupCmd := "mkdir -p /opt/webssh/agent"
 	session.Run(setupCmd)
 	session.Close()
@@ -317,88 +320,93 @@ func (h *MonitorHandler) Deploy(c *gin.Context) {
 	session, _ = client.NewSession()
 	go func() {
 		w, _ := session.StdinPipe()
-		w.Write(scriptBuf.Bytes())
+		w.Write(binaryContent)
 		w.Close()
 	}()
-	if err := session.Run("cat > /opt/webssh/agent/monitor.sh && chmod +x /opt/webssh/agent/monitor.sh"); err != nil {
-		log.Printf("Monitor Deploy: Failed to upload script: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload script"})
+	// Upload directly to file
+	remoteBinaryPath := "/opt/webssh/agent/termiscope-agent"
+	if err := session.Run(fmt.Sprintf("cat > %s && chmod +x %s", remoteBinaryPath, remoteBinaryPath)); err != nil {
+		log.Printf("Monitor Deploy: Failed to upload binary: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload agent binary"})
 		return
 	}
 	session.Close()
 
-	// 2. Create Systemd Service
-	serviceContent := `[Unit]
-Description=WebSSH Monitor Agent
+	// 3. Create Systemd Service
+	serviceContent := fmt.Sprintf(`[Unit]
+Description=TermiScope Monitor Agent
 After=network.target
 
 [Service]
-ExecStart=/opt/webssh/agent/monitor.sh
+ExecStart=%s -server "%s" -secret "%s" -id %d
 Restart=always
 User=root
 WorkingDirectory=/opt/webssh/agent
 
 [Install]
 WantedBy=multi-user.target
-`
+`, remoteBinaryPath, serverURL, secret, host.ID)
+
 	session, _ = client.NewSession()
+	var serviceReader bytes.Buffer
+	serviceReader.WriteString(serviceContent)
+
 	go func() {
 		w, _ := session.StdinPipe()
-		w.Write([]byte(serviceContent))
+		w.Write(serviceReader.Bytes())
 		w.Close()
 	}()
-	// Note: Writing to /etc/systemd requires root.
-	// If user is not root, this will fail unless we use sudo.
-	// For MVP, assume root or user with passwordless sudo?
-	// The user provided "root" in examples.
+
 	targetPath := "/etc/systemd/system/webssh-agent.service"
 	if host.Username != "root" {
-		// Try to write to /tmp and sudo mv
 		targetPath = "/tmp/webssh-agent.service"
 	}
 
 	if err := session.Run(fmt.Sprintf("cat > %s", targetPath)); err != nil {
-		// If failed, maybe try sudo?
-		// Complex handling omitted for brevity of MVP.
 		log.Printf("Failed to write service file: %v", err)
 	}
 	session.Close()
 
 	if host.Username != "root" && targetPath == "/tmp/webssh-agent.service" {
-		// Move with sudo
 		session, _ := client.NewSession()
 		session.Run("echo " + password + " | sudo -S mv /tmp/webssh-agent.service /etc/systemd/system/webssh-agent.service")
 		session.Close()
 	}
 
-	// 3. Enable and Start
+	// 4. Enable and Start
 	session, _ = client.NewSession()
 	cmd := "systemctl daemon-reload && systemctl enable --now webssh-agent"
 	if host.Username != "root" {
 		cmd = "echo " + password + " | sudo -S sh -c '" + cmd + "'"
 	}
-	output, err := session.CombinedOutput(cmd)
+	output, err = session.CombinedOutput(cmd)
 	if err != nil {
 		log.Printf("Monitor Deploy: Failed to start service: %v, Output: %s", err, string(output))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to start service: %v", err)})
 		return
 	}
+	session.Close()
 
-	// 4. Update DB to indicate Monitoring is Enabled
+	// 5. Update DB
 	h.DB.Model(&host).Update("monitor_enabled", true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Agent deployed successfully"})
 }
 
 func (h *MonitorHandler) Stop(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("id") // Fix: Use correct Param name? Previous code used "id"
 	var host models.SSHHost
 	if err := h.DB.First(&host, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Host not found"})
 		return
 	}
 
-	// 1. Connect SSH to stop service
+	// Notify clients to remove immediately
+	monitor.GlobalHub.RemoveHost(host.ID)
+	// Update DB immediately
+	h.DB.Model(&host).Update("monitor_enabled", false)
+
+	// Connect SSH to stop service
 	password, _ := utils.DecryptAES(host.PasswordEncrypted, h.Config.Security.EncryptionKey)
 	privateKey, _ := utils.DecryptAES(host.PrivateKeyEncrypted, h.Config.Security.EncryptionKey)
 
@@ -422,30 +430,24 @@ func (h *MonitorHandler) Stop(c *gin.Context) {
 
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", host.Host, host.Port), sshConfig)
 	if err != nil {
-		// Even if connection fails, we still disable in DB?
-		// Maybe warn user.
+		// Just log error, basic cleanup manually if needed
 		log.Printf("Monitor Stop: SSH Dial failed: %v", err)
-		// We proceed to update DB so user can at least toggle it off if host is dead
-	} else {
-		defer client.Close()
-		session, _ := client.NewSession()
-		defer session.Close()
+		c.JSON(http.StatusOK, gin.H{"message": "Monitoring disabled (Agent stop failed: SSH connection error)"})
+		return
+	}
+	defer client.Close()
 
-		// Commands to stop and remove
-		// systemctl disable --now webssh-agent
-		// rm /etc/systemd/system/webssh-agent.service
-		// systemctl daemon-reload
-		// rm -rf /opt/webssh/agent
+	session, _ := client.NewSession()
+	defer session.Close()
 
-		cmd := "systemctl disable --now webssh-agent && rm -f /etc/systemd/system/webssh-agent.service && systemctl daemon-reload && rm -rf /opt/webssh/agent"
-		if host.Username != "root" {
-			// Sudo handling
-			cmd = "echo " + password + " | sudo -S sh -c '" + cmd + "'"
-		}
-
-		if err := session.Run(cmd); err != nil {
-			log.Printf("Monitor Stop: Failed to run cleanup commands: %v", err)
-		}
+	cmd := "systemctl disable --now webssh-agent && rm -f /etc/systemd/system/webssh-agent.service && systemctl daemon-reload && rm -rf /opt/webssh/agent"
+	if host.Username != "root" {
+		cmd = "echo " + password + " | sudo -S sh -c '" + cmd + "'"
 	}
 
+	if err := session.Run(cmd); err != nil {
+		log.Printf("Monitor Stop: Failed to run cleanup commands: %v", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Monitoring stopped and agent removed"})
 }

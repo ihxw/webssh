@@ -58,6 +58,25 @@ if (-not (Test-Path $DistDir)) {
     Write-Error "Frontend build failed: dist directory not found."
 }
 
+# 3.5 Build Agents
+Write-Host "3.5 Building Agents..." -ForegroundColor Yellow
+$AgentDir = Join-Path $PSScriptRoot "agents"
+if (-not (Test-Path $AgentDir)) { New-Item -ItemType Directory -Path $AgentDir | Out-Null }
+
+# Agent Linux AMD64
+Write-Host "   Building Agent linux/amd64..."
+$Env:GOOS = "linux"; $Env:GOARCH = "amd64"
+go build -o (Join-Path $AgentDir "termiscope-agent-linux-amd64") ./cmd/agent/main.go
+
+# Agent Linux ARM64
+Write-Host "   Building Agent linux/arm64..."
+$Env:GOOS = "linux"; $Env:GOARCH = "arm64"
+go build -o (Join-Path $AgentDir "termiscope-agent-linux-arm64") ./cmd/agent/main.go
+
+# Reset Env
+Remove-Item Env:\GOOS -ErrorAction SilentlyContinue
+Remove-Item Env:\GOARCH -ErrorAction SilentlyContinue
+
 # 4. Build and Package for each target
 Write-Host "4. Building Backends and Packaging..." -ForegroundColor Yellow
 
@@ -86,6 +105,11 @@ foreach ($Target in $Targets) {
     $ConfigDest = Join-Path $OutputDir "configs"
     New-Item -ItemType Directory -Path $ConfigDest | Out-Null
     Copy-Item -Path (Join-Path $PSScriptRoot "configs/config.yaml") -Destination $ConfigDest
+
+    # Copy Agents
+    $AgentDest = Join-Path $OutputDir "agents"
+    New-Item -ItemType Directory -Path $AgentDest | Out-Null
+    Copy-Item -Path "$AgentDir/*" -Destination $AgentDest
 
     # Build Go Binary
     $Env:GOOS = $OS
