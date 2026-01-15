@@ -63,6 +63,29 @@ Write-Host "3.5 Building Agents..." -ForegroundColor Yellow
 $AgentDir = Join-Path $PSScriptRoot "agents"
 if (-not (Test-Path $AgentDir)) { New-Item -ItemType Directory -Path $AgentDir | Out-Null }
 
+# Create a README for agents
+$AgentReadme = @"
+TermiScope Monitoring Agent
+===========================
+
+Supported OS:
+- Linux (amd64, arm64)
+- Windows (amd64)
+- macOS (amd64, arm64)
+
+Installation:
+1. Upload/Copy the appropriate binary to your server/machine.
+2. Make it executable (Linux/macOS): chmod +x termiscope-agent-*
+3. Run it via TermiScope Dashboard "Deploy" button (Linux) or manually:
+
+   Linux/macOS:
+   ./termiscope-agent-[os]-[arch] -server http://YOUR_SERVER:3000 -secret YOUR_SECRET -id HOST_ID
+
+   Windows (PowerShell/CMD):
+   .\termiscope-agent-windows-amd64.exe -server http://YOUR_SERVER:3000 -secret YOUR_SECRET -id HOST_ID
+"@
+$AgentReadme | Set-Content (Join-Path $AgentDir "README.txt")
+
 # Agent Linux AMD64
 Write-Host "   Building Agent linux/amd64..."
 $Env:GOOS = "linux"; $Env:GOARCH = "amd64"
@@ -72,6 +95,21 @@ go build -o (Join-Path $AgentDir "termiscope-agent-linux-amd64") ./cmd/agent/mai
 Write-Host "   Building Agent linux/arm64..."
 $Env:GOOS = "linux"; $Env:GOARCH = "arm64"
 go build -o (Join-Path $AgentDir "termiscope-agent-linux-arm64") ./cmd/agent/main.go
+
+# Agent Windows AMD64
+Write-Host "   Building Agent windows/amd64..."
+$Env:GOOS = "windows"; $Env:GOARCH = "amd64"
+go build -o (Join-Path $AgentDir "termiscope-agent-windows-amd64.exe") ./cmd/agent/main.go
+
+# Agent Darwin AMD64 (Intel)
+Write-Host "   Building Agent darwin/amd64..."
+$Env:GOOS = "darwin"; $Env:GOARCH = "amd64"
+go build -o (Join-Path $AgentDir "termiscope-agent-darwin-amd64") ./cmd/agent/main.go
+
+# Agent Darwin ARM64 (Apple Silicon)
+Write-Host "   Building Agent darwin/arm64..."
+$Env:GOOS = "darwin"; $Env:GOARCH = "arm64"
+go build -o (Join-Path $AgentDir "termiscope-agent-darwin-arm64") ./cmd/agent/main.go
 
 # Reset Env
 Remove-Item Env:\GOOS -ErrorAction SilentlyContinue

@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"os/exec"
 	"runtime"
-	"strconv"
-	"strings"
 	"time"
+
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v3/net"
 )
 
 // InterfaceData holds per-interface metrics
@@ -44,13 +45,8 @@ var (
 	secret    string
 	hostID    uint64
 
-	// Cache static info
 	cachedOS       string
 	cachedHostname string
-
-	// Previous CPU stats for calculation
-	prevIdle  uint64
-	prevTotal uint64
 )
 
 func main() {
@@ -63,10 +59,9 @@ func main() {
 		log.Fatal("Usage: agent -server <url> -secret <secret> -id <host_id>")
 	}
 
-	// Initialize basic info
 	initSystemInfo()
 
-	log.Printf("Agent started for Host %d. Target: %s", hostID, serverURL)
+	log.Printf("Agent started for Host %d. Target: %s. OS: %s", hostID, serverURL, cachedOS)
 
 	client := &http.Client{
 		Timeout: 5 * time.Second,
@@ -82,19 +77,12 @@ func main() {
 }
 
 func initSystemInfo() {
-	cachedHostname, _ = os.Hostname()
-
-	// Read OS release
-	if content, err := ioutil.ReadFile("/etc/os-release"); err == nil {
-		lines := strings.Split(string(content), "\n")
-		for _, line := range lines {
-			if strings.HasPrefix(line, "PRETTY_NAME=") {
-				cachedOS = strings.Trim(strings.TrimPrefix(line, "PRETTY_NAME="), "\"")
-				break
-			}
-		}
-	}
-	if cachedOS == "" {
+	info, err := host.Info()
+	if err == nil {
+		cachedHostname = info.Hostname
+		cachedOS = fmt.Sprintf("%s %s", info.OS, info.Platform)
+	} else {
+		// Fallback
 		cachedOS = runtime.GOOS
 	}
 }
@@ -107,165 +95,55 @@ func collectMetrics() MetricData {
 	}
 
 	// Uptime
-	if uptimeBytes, err := ioutil.ReadFile("/proc/uptime"); err == nil {
-		parts := strings.Fields(string(uptimeBytes))
-		if len(parts) > 0 {
-			if val, err := strconv.ParseFloat(parts[0], 64); err == nil {
-				data.Uptime = uint64(val)
-			}
-		}
+	if uptime, err := host.Uptime(); err == nil {
+		data.Uptime = uptime
 	}
 
 	// Memory
-	getMemory(&data)
+	if v, err := mem.VirtualMemory(); err == nil {
+		data.MemTotal = v.Total
+		data.MemUsed = v.Used
+	}
 
 	// CPU
-	getCPU(&data)
+	if percent, err := cpu.Percent(0, false); err == nil && len(percent) > 0 {
+		data.CPU = percent[0]
+	}
 
 	// Disk
-	getDisk(&data)
+	diskPath := "/"
+	if runtime.GOOS == "windows" {
+		diskPath = "C:"
+	}
+	if d, err := disk.Usage(diskPath); err == nil {
+		data.DiskTotal = d.Total
+		data.DiskUsed = d.Used
+	}
 
 	// Network
-	getNetwork(&data)
+	if counters, err := net.IOCounters(true); err == nil {
+		data.NetRx = 0
+		data.NetTx = 0
+		data.Interfaces = []InterfaceData{}
 
-	return data
-}
-
-func getMemory(data *MetricData) {
-	content, err := ioutil.ReadFile("/proc/meminfo")
-	if err != nil {
-		return
-	}
-
-	var memFree, memBuffers, memCached uint64
-	lines := strings.Split(string(content), "\n")
-	for _, line := range lines {
-		parts := strings.Fields(line)
-		if len(parts) < 2 {
-			continue
-		}
-		key := strings.TrimSuffix(parts[0], ":")
-		val, _ := strconv.ParseUint(parts[1], 10, 64)
-		val *= 1024 // KB to Bytes
-
-		switch key {
-		case "MemTotal":
-			data.MemTotal = val
-		case "MemFree":
-			memFree = val
-		case "Buffers":
-			memBuffers = val
-		case "Cached":
-			memCached = val
-		}
-	}
-
-	// Used = Total - Free - Buffers - Cached
-	if data.MemTotal > 0 {
-		data.MemUsed = data.MemTotal - memFree - memBuffers - memCached
-	}
-}
-
-func getCPU(data *MetricData) {
-	content, err := ioutil.ReadFile("/proc/stat")
-	if err != nil {
-		return
-	}
-
-	lines := strings.Split(string(content), "\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "cpu ") {
-			parts := strings.Fields(line)
-			if len(parts) < 5 {
+		for _, nic := range counters {
+			// Skip loopback or pseudo interfaces if desired, but gopsutil usually gives real ones
+			// Simulating the previous logic of skipping 'lo'
+			if nic.Name == "lo" || nic.Name == "Loopback Pseudo-Interface 1" {
 				continue
 			}
 
-			// user nice system idle iowait irq softirq steal
-			var total uint64
-			var idle uint64
-
-			for i, v := range parts[1:] {
-				val, _ := strconv.ParseUint(v, 10, 64)
-				total += val
-				if i == 3 { // idle is the 4th field (index 3)
-					idle = val
-				}
-			}
-
-			if prevTotal > 0 {
-				diffTotal := total - prevTotal
-				diffIdle := idle - prevIdle
-
-				if diffTotal > 0 {
-					usage := float64(diffTotal-diffIdle) / float64(diffTotal) * 100
-					data.CPU = float64(int(usage*10)) / 10 // Round to 1 decimal
-				}
-			}
-
-			prevTotal = total
-			prevIdle = idle
-			break
+			data.NetRx += nic.BytesRecv
+			data.NetTx += nic.BytesSent
+			data.Interfaces = append(data.Interfaces, InterfaceData{
+				Name: nic.Name,
+				Rx:   nic.BytesRecv,
+				Tx:   nic.BytesSent,
+			})
 		}
 	}
-}
 
-func getDisk(data *MetricData) {
-	// Using df command is widely compatible
-	cmd := exec.Command("df", "-B1", "/")
-	out, err := cmd.Output()
-	if err != nil {
-		return
-	}
-
-	lines := strings.Split(string(out), "\n")
-	if len(lines) < 2 {
-		return
-	}
-
-	// Filesystem 1K-blocks Used Available Use% Mounted on
-	fields := strings.Fields(lines[1])
-	if len(fields) >= 3 {
-		data.DiskTotal, _ = strconv.ParseUint(fields[1], 10, 64)
-		data.DiskUsed, _ = strconv.ParseUint(fields[2], 10, 64)
-	}
-}
-
-func getNetwork(data *MetricData) {
-	content, err := ioutil.ReadFile("/proc/net/dev")
-	if err != nil {
-		return
-	}
-
-	data.NetRx = 0 // Reset total Rx/Tx before recalculating
-	data.NetTx = 0
-	data.Interfaces = []InterfaceData{}
-
-	lines := strings.Split(string(content), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, ":") {
-			// Clean up line: Replace first colon with space to handle "eth0:123" vs "eth0: 123"
-			cleanLine := strings.Replace(line, ":", " ", 1)
-			fields := strings.Fields(cleanLine)
-
-			// fields[0] is name, fields[1] is rx_bytes, fields[9] is tx_bytes
-			if len(fields) >= 10 {
-				name := fields[0]
-				rx, _ := strconv.ParseUint(fields[1], 10, 64)
-				tx, _ := strconv.ParseUint(fields[9], 10, 64)
-
-				if name != "lo" {
-					data.NetRx += rx
-					data.NetTx += tx
-				}
-
-				data.Interfaces = append(data.Interfaces, InterfaceData{
-					Name: name,
-					Rx:   rx,
-					Tx:   tx,
-				})
-			}
-		}
-	}
+	return data
 }
 
 func sendMetrics(client *http.Client, data MetricData) error {
