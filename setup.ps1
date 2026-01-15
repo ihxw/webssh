@@ -1,8 +1,8 @@
-# WebSSH Setup Script
+# TermiScope Setup Script
 # This script helps you set up the required environment variables
 
 Write-Host "==================================" -ForegroundColor Cyan
-Write-Host "WebSSH Environment Setup" -ForegroundColor Cyan
+Write-Host "TermiScope Environment Setup" -ForegroundColor Cyan
 Write-Host "==================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -26,15 +26,15 @@ Write-Host "==================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Set environment variables for current session
-$env:WEBSSH_JWT_SECRET = $jwtSecret
-$env:WEBSSH_ENCRYPTION_KEY = $encryptionKey
+$env:TERMISCOPE_JWT_SECRET = $jwtSecret
+$env:TERMISCOPE_ENCRYPTION_KEY = $encryptionKey
 
 Write-Host "Environment variables set for current session!" -ForegroundColor Green
 Write-Host ""
 Write-Host "To make these permanent, add them to your system environment variables:" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "WEBSSH_JWT_SECRET=$jwtSecret" -ForegroundColor White
-Write-Host "WEBSSH_ENCRYPTION_KEY=$encryptionKey" -ForegroundColor White
+Write-Host "TERMISCOPE_JWT_SECRET=$jwtSecret" -ForegroundColor White
+Write-Host "TERMISCOPE_ENCRYPTION_KEY=$encryptionKey" -ForegroundColor White
 Write-Host ""
 Write-Host "==================================" -ForegroundColor Cyan
 Write-Host "Next Steps:" -ForegroundColor Cyan

@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const Version = "1.0.1"
+const Version = "1.1.0"
 
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
@@ -66,14 +66,14 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("log.file", "./logs/app.log")
 
 	// Environment variables override
-	viper.SetEnvPrefix("WEBSSH")
+	viper.SetEnvPrefix("TERMISCOPE")
 	viper.AutomaticEnv()
 
 	// Bind specific environment variables
-	viper.BindEnv("server.port", "WEBSSH_PORT")
-	viper.BindEnv("database.path", "WEBSSH_DB_PATH")
-	viper.BindEnv("security.jwt_secret", "WEBSSH_JWT_SECRET")
-	viper.BindEnv("security.encryption_key", "WEBSSH_ENCRYPTION_KEY")
+	viper.BindEnv("server.port", "TERMISCOPE_PORT")
+	viper.BindEnv("database.path", "TERMISCOPE_DB_PATH")
+	viper.BindEnv("security.jwt_secret", "TERMISCOPE_JWT_SECRET")
+	viper.BindEnv("security.encryption_key", "TERMISCOPE_ENCRYPTION_KEY")
 
 	// Read config file (optional, will use defaults if not found)
 	if err := viper.ReadInConfig(); err != nil {
@@ -90,16 +90,16 @@ func LoadConfig() (*Config, error) {
 
 	// Generate secrets if not provided
 	if config.Security.JWTSecret == "" {
-		config.Security.JWTSecret = os.Getenv("WEBSSH_JWT_SECRET")
+		config.Security.JWTSecret = os.Getenv("TERMISCOPE_JWT_SECRET")
 		if config.Security.JWTSecret == "" {
-			return nil, fmt.Errorf("JWT secret is required (set WEBSSH_JWT_SECRET environment variable)")
+			return nil, fmt.Errorf("JWT secret is required (set TERMISCOPE_JWT_SECRET environment variable)")
 		}
 	}
 
 	if config.Security.EncryptionKey == "" {
-		config.Security.EncryptionKey = os.Getenv("WEBSSH_ENCRYPTION_KEY")
+		config.Security.EncryptionKey = os.Getenv("TERMISCOPE_ENCRYPTION_KEY")
 		if config.Security.EncryptionKey == "" {
-			return nil, fmt.Errorf("encryption key is required (set WEBSSH_ENCRYPTION_KEY environment variable)")
+			return nil, fmt.Errorf("encryption key is required (set TERMISCOPE_ENCRYPTION_KEY environment variable)")
 		}
 	}
 

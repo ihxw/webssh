@@ -4,7 +4,7 @@
 $ErrorActionPreference = "Stop"
 
 # Configuration
-$AppName = "webssh"
+$AppName = "TermiScope"
 $Version = "1.0.0" # You might want to extract this from config or git tags later
 $ReleaseDir = Join-Path $PSScriptRoot "release"
 $WebDir = Join-Path $PSScriptRoot "web"

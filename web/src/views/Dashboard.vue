@@ -3,9 +3,9 @@
     <a-layout class="compact-layout" style="min-height: 100vh">
       <a-layout-header :style="{ background: themeStore.isDark ? '#1f1f1f' : '#fff', padding: '0 24px', borderBottom: themeStore.isDark ? '1px solid #303030' : '1px solid #f0f0f0', lineHeight: '48px', height: '48px' }">
         <div style="display: flex; align-items: center; justify-content: space-between; height: 100%">
-          <div :style="{ color: themeStore.isDark ? '#fff' : '#001529', fontSize: '18px', fontWeight: '600', display: 'flex', alignItems: 'center', marginRight: '24px' }">
+          <div :style="{ color: themeStore.isDark ? '#fff' : '#001529', fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', marginRight: '24px' }">
             <CodeOutlined style="margin-right: 8px" />
-            WebSSH
+            TermiScope
           </div>
           
           <a-menu
@@ -23,6 +23,10 @@
             <a-menu-item key="HostManagement">
               <DatabaseOutlined />
               {{ t('nav.hosts') }}
+            </a-menu-item>
+            <a-menu-item key="MonitorDashboard">
+              <DashboardOutlined />
+              {{ t('nav.monitor') }}
             </a-menu-item>
             <a-menu-item key="ConnectionHistory">
               <HistoryOutlined />
@@ -102,6 +106,7 @@ import { useI18n } from 'vue-i18n'
 import {
   CodeOutlined,
   DatabaseOutlined,
+  DashboardOutlined,
   HistoryOutlined,
   TeamOutlined,
   UserOutlined,

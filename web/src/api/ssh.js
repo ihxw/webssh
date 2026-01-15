@@ -24,3 +24,11 @@ export const deleteHost = async (id) => {
 export const testConnection = async (id) => {
     return await api.post(`/ssh-hosts/${id}/test`)
 }
+
+export const deployMonitor = async (id) => {
+    return await api.post(`/ssh-hosts/${id}/monitor/deploy`)
+}
+
+export const stopMonitor = async (id) => {
+    return await api.post(`/ssh-hosts/${id}/monitor/stop`)
+}

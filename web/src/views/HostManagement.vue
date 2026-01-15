@@ -41,8 +41,39 @@
               </a-tooltip>
             </div>
           </template>
+          <template v-if="column.key === 'monitor'">
+             <div style="display: flex; align-items: center">
+                <a-tag v-if="record.monitor_enabled" color="processing">
+                  <template #icon><DashboardOutlined /></template>
+                  Enabled
+                </a-tag>
+                <a-tag v-else color="default">
+                  Disabled
+                </a-tag>
+             </div>
+          </template>
           <template v-if="column.key === 'action'">
             <a-space>
+              <a-popconfirm
+                v-if="!record.monitor_enabled"
+                title="Deploy monitor agent to this host?"
+                @confirm="handleDeployMonitor(record)"
+              >
+                 <a-button size="small" :loading="monitorLoading[record.id]">
+                   <DashboardOutlined />
+                   Monitor
+                 </a-button>
+              </a-popconfirm>
+              <a-popconfirm
+                v-else
+                title="Disable monitoring?"
+                @confirm="handleStopMonitor(record)"
+              >
+                 <a-button size="small" danger :loading="monitorLoading[record.id]">
+                   <StopOutlined />
+                   Stop
+                 </a-button>
+              </a-popconfirm>
               <a-button size="small" @click="handleConnect(record)">
                 <LinkOutlined />
                 {{ t('terminal.connect') }}
@@ -130,10 +161,13 @@ import {
   EditOutlined,
   DeleteOutlined,
   LinkOutlined,
-  LoadingOutlined
+  LoadingOutlined,
+  DashboardOutlined,
+  StopOutlined
 } from '@ant-design/icons-vue'
 import { useSSHStore } from '../stores/ssh'
 import { useI18n } from 'vue-i18n'
+import { deployMonitor, stopMonitor } from '../api/ssh'
 
 const router = useRouter()
 const sshStore = useSSHStore()
@@ -161,11 +195,41 @@ const columns = computed(() => [
   { title: t('host.name'), dataIndex: 'name', key: 'name' },
   { title: t('host.host'), dataIndex: 'host', key: 'host' },
   { title: 'Status', key: 'status', width: 100 },
+  { title: 'Monitor', key: 'monitor', width: 100 },
   { title: t('host.port'), dataIndex: 'port', key: 'port' },
   { title: t('host.username'), dataIndex: 'username', key: 'username' },
   { title: t('host.group'), dataIndex: 'group_name', key: 'group_name' },
-  { title: t('common.edit'), key: 'action', width: 250 }
+  { title: t('common.edit'), key: 'action', width: 320 }
 ])
+
+const monitorLoading = ref({})
+
+const handleDeployMonitor = async (host) => {
+  monitorLoading.value[host.id] = true
+  try {
+    await deployMonitor(host.id)
+    message.success('Monitor agent deployed successfully')
+    // Update local state without reload
+    host.monitor_enabled = true
+  } catch (error) {
+    message.error('Failed to deploy monitor: ' + (error.response?.data?.error || error.message))
+  } finally {
+    monitorLoading.value[host.id] = false
+  }
+}
+
+const handleStopMonitor = async (host) => {
+  monitorLoading.value[host.id] = true
+  try {
+    await stopMonitor(host.id)
+    message.success('Monitoring disabled')
+    host.monitor_enabled = false
+  } catch (error) {
+    message.error('Failed to stop monitor')
+  } finally {
+    monitorLoading.value[host.id] = false
+  }
+}
 
 const hostStatuses = ref({})
 const checkingStatus = ref(false)

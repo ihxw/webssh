@@ -26,6 +26,7 @@ export default {
     nav: {
         terminal: 'Terminal',
         hosts: 'Hosts',
+        monitor: 'Monitor',
         history: 'History',
         commands: 'Commands',
         recordings: 'Recordings',

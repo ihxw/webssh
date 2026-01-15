@@ -19,6 +19,8 @@ type SSHHost struct {
 	PrivateKeyEncrypted string         `gorm:"type:text" json:"-"`
 	GroupName           string         `gorm:"size:50" json:"group_name"`
 	Tags                string         `gorm:"size:255" json:"tags"`
+	MonitorEnabled      bool           `gorm:"default:false" json:"monitor_enabled"`
+	MonitorSecret       string         `gorm:"size:64" json:"-"`
 	Description         string         `gorm:"type:text" json:"description"`
 	CreatedAt           time.Time      `json:"created_at"`
 	UpdatedAt           time.Time      `json:"updated_at"`

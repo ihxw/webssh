@@ -12,6 +12,7 @@ import (
 	"github.com/ihxw/webssh/internal/database"
 	"github.com/ihxw/webssh/internal/handlers"
 	"github.com/ihxw/webssh/internal/middleware"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func main() {
@@ -36,6 +37,15 @@ func main() {
 	if err := database.CleanupStaleLogs(db); err != nil {
 		log.Printf("Warning: Failed to cleanup stale logs: %v", err)
 	}
+
+	// Configure logging
+	log.SetOutput(&lumberjack.Logger{
+		Filename:   "logs/server.log",
+		MaxSize:    10, // megabytes
+		MaxBackups: 5,
+		MaxAge:     30, // days
+		Compress:   true,
+	})
 
 	// Set Gin mode
 	if cfg.Server.Mode == "release" {
@@ -67,6 +77,10 @@ func main() {
 	sshWSHandler := handlers.NewSSHWebSocketHandler(db, cfg)
 	router.GET("/api/ws/ssh/:hostId", sshWSHandler.HandleWebSocket)
 
+	// Monitor routes
+	monitorHandler := handlers.NewMonitorHandler(db, cfg)
+	router.POST("/api/monitor/pulse", monitorHandler.Pulse) // Agent reports here using Secret Header
+
 	// Protected routes
 	protected := router.Group("/api")
 	protected.Use(middleware.AuthMiddleware(cfg.Security.JWTSecret))
@@ -84,6 +98,11 @@ func main() {
 		protected.DELETE("/ssh-hosts/:id", sshHostHandler.Delete)
 		protected.GET("/ssh-hosts/:id", sshHostHandler.Get)
 		protected.POST("/ssh-hosts/:id/test", sshHostHandler.TestConnection)
+
+		// Monitor Management
+		protected.GET("/monitor/stream", monitorHandler.Stream)
+		protected.POST("/ssh-hosts/:id/monitor/deploy", monitorHandler.Deploy)
+		protected.POST("/ssh-hosts/:id/monitor/stop", monitorHandler.Stop)
 
 		// SFTP routes
 		sftpHandler := handlers.NewSftpHandler(db, cfg)
@@ -162,7 +181,7 @@ func main() {
 
 	// Start server
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
-	log.Printf("Starting WebSSH server on %s", addr)
+	log.Printf("Starting TermiScope server on %s", addr)
 	if err := router.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

@@ -31,6 +31,12 @@ const routes = [
                 meta: { requiresAuth: true }
             },
             {
+                path: 'monitor',
+                name: 'MonitorDashboard',
+                component: () => import('../views/MonitorDashboard.vue'),
+                meta: { requiresAuth: true }
+            },
+            {
                 path: 'history',
                 name: 'ConnectionHistory',
                 component: () => import('../views/ConnectionHistory.vue'),

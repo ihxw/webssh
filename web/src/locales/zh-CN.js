@@ -26,6 +26,7 @@ export default {
     nav: {
         terminal: '终端',
         hosts: '主机',
+        monitor: '监控',
         history: '历史',
         commands: '命令',
         recordings: '录制',
