@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const Version = "1.2.0"
+const Version = "1.2.1"
 
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`

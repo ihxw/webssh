@@ -33,7 +33,7 @@
 
           <a-divider type="vertical" />
 
-          <a-dropdown>
+          <!-- <a-dropdown>
             <a-button size="small">
               <BgColorsOutlined />
               {{ t('terminal.theme') }}
@@ -57,7 +57,7 @@
             </template>
           </a-dropdown>
 
-          <a-divider type="vertical" />
+          <a-divider type="vertical" /> -->
           
           <div style="display: flex; align-items: center; gap: 4px; border: 1px solid #d9d9d9; padding: 0 8px; border-radius: 4px; background: rgba(0,0,0,0.02); height: 24px">
             <VideoCameraOutlined :style="{ color: isRecordingEnabled ? '#ff4d4f' : '#8c8c8c' }" />
