@@ -100,6 +100,13 @@ const getHostName = (hostId) => {
   return host ? host.name : 'Unknown Host'
 }
 
+const getOsIcon = (os) => {
+  os = (os || '').toLowerCase()
+  if (os.includes('win')) return WindowsOutlined
+  if (os.includes('mac') || os.includes('darwin')) return AppleOutlined
+  return DesktopOutlined
+}
+
 onMounted(() => {
   sshStore.loadHosts()
   connect()
