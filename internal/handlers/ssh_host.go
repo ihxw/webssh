@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"fmt"
+	"net"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ihxw/webssh/internal/config"
@@ -255,5 +258,37 @@ func (h *SSHHostHandler) Delete(c *gin.Context) {
 
 	utils.SuccessResponse(c, http.StatusOK, gin.H{
 		"message": "host deleted successfully",
+	})
+}
+
+// TestConnection tests the connectivity to the SSH host
+func (h *SSHHostHandler) TestConnection(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	id := c.Param("id")
+
+	var host models.SSHHost
+	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&host).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "host not found")
+		return
+	}
+
+	target := fmt.Sprintf("%s:%d", host.Host, host.Port)
+	start := time.Now()
+	conn, err := net.DialTimeout("tcp", target, 5*time.Second)
+	duration := time.Since(start)
+
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "offline",
+			"latency": 0,
+			"error":   err.Error(),
+		})
+		return
+	}
+	defer conn.Close()
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "online",
+		"latency": duration.Milliseconds(),
 	})
 }

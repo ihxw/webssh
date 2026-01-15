@@ -388,6 +388,16 @@ const cleanup = () => {
   /* background managed by inline style */
 }
 
+
+.terminal-status {
+  height: 28px;
+  padding: 0 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
 .terminal-container {
   padding: 0;
   margin: 0;

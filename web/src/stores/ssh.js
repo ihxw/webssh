@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { getHosts, getHost, createHost, updateHost, deleteHost } from '../api/ssh'
+import { getHosts, getHost, createHost, updateHost, deleteHost, testConnection } from '../api/ssh'
 
 export const useSSHStore = defineStore('ssh', {
     state: () => ({
@@ -74,6 +74,15 @@ export const useSSHStore = defineStore('ssh', {
                 this.hosts = this.hosts.filter(h => h.id !== id)
             } catch (error) {
                 console.error('Failed to delete host:', error)
+                throw error
+            }
+        },
+
+        async testHostConnection(id) {
+            try {
+                return await testConnection(id)
+            } catch (error) {
+                console.error('Failed to test host connection:', error)
                 throw error
             }
         },

@@ -133,9 +133,9 @@ body {
   font-size: 13px;
 }
 
-.terminal-tabs .ant-tabs-content {
+/* .terminal-tabs .ant-tabs-content {
   height: calc(100vh - 100px);
-}
+} */
 
 .terminal-tabs .ant-tabs-tabpane {
   height: 100%;

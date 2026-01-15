@@ -83,6 +83,7 @@ func main() {
 		protected.PUT("/ssh-hosts/:id", sshHostHandler.Update)
 		protected.DELETE("/ssh-hosts/:id", sshHostHandler.Delete)
 		protected.GET("/ssh-hosts/:id", sshHostHandler.Get)
+		protected.POST("/ssh-hosts/:id/test", sshHostHandler.TestConnection)
 
 		// SFTP routes
 		sftpHandler := handlers.NewSftpHandler(db, cfg)

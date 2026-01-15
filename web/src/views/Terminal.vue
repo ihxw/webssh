@@ -1,5 +1,5 @@
 <template>
-  <div style="height: calc(100vh - 80px)">
+  <div style="height: calc(100vh - 64px)">
     <a-card :bordered="false" class="terminal-card">
       <template #title>
         <div style="display: flex; align-items: center; gap: 12px">

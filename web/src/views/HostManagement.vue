@@ -25,6 +25,22 @@
         size="small"
       >
         <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'status'">
+            <div style="display: flex; align-items: center">
+              <a-tooltip :title="hostStatuses[record.id]?.status === 'online' ? 'Online' : (hostStatuses[record.id]?.error || 'Checking...')">
+                <a-tag v-if="hostStatuses[record.id]?.status === 'online'" color="success">
+                  {{ hostStatuses[record.id]?.latency }}ms
+                </a-tag>
+                <a-tag v-else-if="hostStatuses[record.id]?.status === 'offline'" color="error">
+                  Offline
+                </a-tag>
+                <a-tag v-else color="processing">
+                  <template #icon><LoadingOutlined /></template>
+                  Checking
+                </a-tag>
+              </a-tooltip>
+            </div>
+          </template>
           <template v-if="column.key === 'action'">
             <a-space>
               <a-button size="small" @click="handleConnect(record)">
@@ -113,7 +129,8 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  LinkOutlined
+  LinkOutlined,
+  LoadingOutlined
 } from '@ant-design/icons-vue'
 import { useSSHStore } from '../stores/ssh'
 import { useI18n } from 'vue-i18n'
@@ -143,20 +160,45 @@ const hostForm = ref({
 const columns = computed(() => [
   { title: t('host.name'), dataIndex: 'name', key: 'name' },
   { title: t('host.host'), dataIndex: 'host', key: 'host' },
+  { title: 'Status', key: 'status', width: 100 },
   { title: t('host.port'), dataIndex: 'port', key: 'port' },
   { title: t('host.username'), dataIndex: 'username', key: 'username' },
   { title: t('host.group'), dataIndex: 'group_name', key: 'group_name' },
   { title: t('common.edit'), key: 'action', width: 250 }
 ])
 
+const hostStatuses = ref({})
+const checkingStatus = ref(false)
+
 onMounted(async () => {
   await loadHosts()
+  checkAllStatuses()
 })
+
+const checkAllStatuses = async () => {
+  if (checkingStatus.value || sshStore.hosts.length === 0) return
+  
+  checkingStatus.value = true
+  // Check in batches or parallel? Parallel is fine for small numbers.
+  const checks = sshStore.hosts.map(async (host) => {
+    hostStatuses.value[host.id] = { status: 'loading' }
+    try {
+      const result = await sshStore.testHostConnection(host.id)
+      hostStatuses.value[host.id] = result
+    } catch (e) {
+      hostStatuses.value[host.id] = { status: 'offline', error: 'Failed to check' }
+    }
+  })
+  
+  await Promise.allSettled(checks)
+  checkingStatus.value = false
+}
 
 const loadHosts = async () => {
   loading.value = true
   try {
     await sshStore.fetchHosts()
+    checkAllStatuses()
   } catch (error) {
     message.error(t('host.failLoad'))
   } finally {
