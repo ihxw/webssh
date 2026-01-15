@@ -137,7 +137,7 @@ const handleBackup = async () => {
     
     const link = document.createElement('a')
     link.href = downloadUrl
-    link.setAttribute('download', 'webssh_backup.db')
+    link.setAttribute('download', 'termiscope_backup.db')
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

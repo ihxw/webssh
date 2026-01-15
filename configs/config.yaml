@@ -1,13 +1,13 @@
 server:
-  # 服务器监听端口
+  # 服务器监听端
   port: 3000
-  # 运行模式: debug (调试模式) 或 release (发布模式)
-  # debug 模式下会输出更多日志，release 模式适用于生产环境
+  # 运行模式: debug (调试模式) release (发布模式)
+  # debug 模式下会输出更多日志，release 模式适用于生产环
   mode: debug
 
 database:
-  # SQLite 数据库文件存储路径
-  path: ./data/webssh.db
+  # SQLite 数据库文件存储路
+  path: ./data/termiscope.db
 
 security:
   # JWT 签名密钥
@@ -16,17 +16,17 @@ security:
   jwt_secret: "zheshijwtdeanquanma"
   
   # 数据加密密钥 (用于加密存储的密码和私钥)
-  # 重要: 必须正好是 32 字节 (AES-256)
+  # 重要: 必须正好32 字节 (AES-256)
   # 可以通过环境变量 TERMISCOPE_ENCRYPTION_KEY 设置
   encryption_key: "f9751dd3bec89bfbbebe6d45f02d60b7"
   
   # 登录频率限制 (每分钟允许的尝试次数)
   login_rate_limit: 20
 
-  # Access Token 有效期 (默认 15m)
+  # Access Token 有效(默认 15m)
   access_expiration: 15m
   
-  # Refresh Token 有效期 (默认 168h = 7天)
+  # Refresh Token 有效(默认 168h = 7
   refresh_expiration: 24h
 
 ssh:
@@ -34,7 +34,7 @@ ssh:
   timeout: 30s
   # SSH 会话空闲超时时间 (超过此时间无操作将自动断开)
   idle_timeout: 30m
-  # 每个用户允许的最大并发 SSH 连接数
+  # 每个用户允许的最大并SSH 连接
   max_connections_per_user: 10
 
 log:

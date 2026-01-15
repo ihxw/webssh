@@ -321,7 +321,7 @@ const downloadBackupCodes = () => {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'webssh-backup-codes.txt'
+  a.download = 'termiscope-backup-codes.txt'
   a.click()
   URL.revokeObjectURL(url)
   message.success('Backup codes downloaded')

@@ -14,10 +14,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/ihxw/webssh/internal/config"
-	"github.com/ihxw/webssh/internal/models"
-	"github.com/ihxw/webssh/internal/monitor"
-	"github.com/ihxw/webssh/internal/utils"
+	"github.com/ihxw/termiscope/internal/config"
+	"github.com/ihxw/termiscope/internal/models"
+	"github.com/ihxw/termiscope/internal/monitor"
+	"github.com/ihxw/termiscope/internal/utils"
 	"golang.org/x/crypto/ssh"
 	"gorm.io/gorm"
 )
@@ -418,7 +418,7 @@ func (h *MonitorHandler) Deploy(c *gin.Context) {
 	// 2. Upload Binary
 	session, _ = client.NewSession()
 	// Create dir
-	setupCmd := "mkdir -p /opt/webssh/agent"
+	setupCmd := "mkdir -p /opt/termiscope/agent"
 	session.Run(setupCmd)
 	session.Close()
 
@@ -429,7 +429,7 @@ func (h *MonitorHandler) Deploy(c *gin.Context) {
 		w.Close()
 	}()
 	// Upload directly to file
-	remoteBinaryPath := "/opt/webssh/agent/termiscope-agent"
+	remoteBinaryPath := "/opt/termiscope/agent/termiscope-agent"
 	if err := session.Run(fmt.Sprintf("cat > %s && chmod +x %s", remoteBinaryPath, remoteBinaryPath)); err != nil {
 		log.Printf("Monitor Deploy: Failed to upload binary: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload agent binary"})
@@ -446,7 +446,7 @@ After=network.target
 ExecStart=%s -server "%s" -secret "%s" -id %d
 Restart=always
 User=root
-WorkingDirectory=/opt/webssh/agent
+WorkingDirectory=/opt/termiscope/agent
 
 [Install]
 WantedBy=multi-user.target
@@ -462,9 +462,9 @@ WantedBy=multi-user.target
 		w.Close()
 	}()
 
-	targetPath := "/etc/systemd/system/webssh-agent.service"
+	targetPath := "/etc/systemd/system/termiscope-agent.service"
 	if host.Username != "root" {
-		targetPath = "/tmp/webssh-agent.service"
+		targetPath = "/tmp/termiscope-agent.service"
 	}
 
 	if err := session.Run(fmt.Sprintf("cat > %s", targetPath)); err != nil {
@@ -472,15 +472,15 @@ WantedBy=multi-user.target
 	}
 	session.Close()
 
-	if host.Username != "root" && targetPath == "/tmp/webssh-agent.service" {
+	if host.Username != "root" && targetPath == "/tmp/termiscope-agent.service" {
 		session, _ := client.NewSession()
-		session.Run("echo " + password + " | sudo -S mv /tmp/webssh-agent.service /etc/systemd/system/webssh-agent.service")
+		session.Run("echo " + password + " | sudo -S mv /tmp/termiscope-agent.service /etc/systemd/system/termiscope-agent.service")
 		session.Close()
 	}
 
 	// 4. Enable and Start
 	session, _ = client.NewSession()
-	cmd := "systemctl daemon-reload && systemctl enable --now webssh-agent"
+	cmd := "systemctl daemon-reload && systemctl enable --now termiscope-agent"
 	if host.Username != "root" {
 		cmd = "echo " + password + " | sudo -S sh -c '" + cmd + "'"
 	}
@@ -545,7 +545,7 @@ func (h *MonitorHandler) Stop(c *gin.Context) {
 	session, _ := client.NewSession()
 	defer session.Close()
 
-	cmd := "systemctl disable --now webssh-agent && rm -f /etc/systemd/system/webssh-agent.service && systemctl daemon-reload && rm -rf /opt/webssh/agent"
+	cmd := "systemctl disable --now termiscope-agent && rm -f /etc/systemd/system/termiscope-agent.service && systemctl daemon-reload && rm -rf /opt/termiscope/agent"
 	if host.Username != "root" {
 		cmd = "echo " + password + " | sudo -S sh -c '" + cmd + "'"
 	}

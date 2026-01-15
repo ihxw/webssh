@@ -1,4 +1,4 @@
-module github.com/ihxw/webssh
+module github.com/ihxw/termiscope
 
 go 1.25.5
 

@@ -1,4 +1,4 @@
-# WebSSH
+# TermiScope
 本项目代码全部由AI编写，后续bug也由AI修复.  
 A modern, web-based SSH terminal designed for simplicity, security, and power.
 
@@ -7,7 +7,7 @@ A modern, web-based SSH terminal designed for simplicity, security, and power.
 - 🚀 **Fast & Responsive**: Built with Go, Vue 3, and xterm.js for high-performance terminal emulation.
 - 📂 **SFTP Support**: Integrated file explorer for uploading, downloading, and managing files.
 - 📹 **Session Recording**: Record your SSH sessions and replay them later using an integrated player.
-- ⚡ **Quick Commands**: Reusable command templates for common tasks.
+- �?**Quick Commands**: Reusable command templates for common tasks.
 - 🔒 **Secure**: JWT-based authentication, one-time WebSocket tickets, and AES-encrypted host data.
 - 💾 **Session Persistence**: Sessions stay active even when navigating through the dashboard.
 - 🌗 **Theme Support**: Fully optimized for Light and Dark modes.
@@ -43,7 +43,7 @@ Access the app at `http://localhost:9287`. Default credentials: `admin` / `admin
 ## Documentation
 
 - [Deployment Guide](./DEPLOY.md)
-- [Project Requirements](./需求.md)
+- [Project Requirements](./需�?md)
 
 ## License
 

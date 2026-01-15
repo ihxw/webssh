@@ -10,9 +10,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ihxw/webssh/internal/middleware"
-	"github.com/ihxw/webssh/internal/models"
-	"github.com/ihxw/webssh/internal/utils"
+	"github.com/ihxw/termiscope/internal/middleware"
+	"github.com/ihxw/termiscope/internal/models"
+	"github.com/ihxw/termiscope/internal/utils"
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -57,7 +57,7 @@ func (h *TwoFactorHandler) Setup2FA(c *gin.Context) {
 
 	// Generate TOTP key
 	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      "WebSSH",
+		Issuer:      "TermiScope",
 		AccountName: username,
 		SecretSize:  32,
 	})
@@ -309,10 +309,6 @@ func generateBackupCodes(count int) []string {
 			}
 		}
 
-		// Format as XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX (total 35 chars)
-		// User specifically asked for "32位", but 32 chars content + hyphens is standard.
-		// If they want exactly 32 chars including hyphens, we'll use 29 chars + 3 hyphens.
-		// However, 8-8-8-8 is a very clean 32-bit-content format.
 		formatted := fmt.Sprintf("%s-%s-%s-%s",
 			string(code[0:8]),
 			string(code[8:16]),

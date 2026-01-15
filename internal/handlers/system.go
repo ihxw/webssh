@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ihxw/webssh/internal/config"
-	"github.com/ihxw/webssh/internal/middleware"
-	"github.com/ihxw/webssh/internal/utils"
+	"github.com/ihxw/termiscope/internal/config"
+	"github.com/ihxw/termiscope/internal/middleware"
+	"github.com/ihxw/termiscope/internal/utils"
 	"gorm.io/gorm"
 )
 
@@ -32,7 +32,7 @@ func (h *SystemHandler) Backup(c *gin.Context) {
 	dbPath := h.config.Database.Path
 
 	// Create a temporary backup file to avoid locking the main DB during download
-	tmpBackup := filepath.Join(os.TempDir(), fmt.Sprintf("webssh_backup_%d.db", time.Now().Unix()))
+	tmpBackup := filepath.Join(os.TempDir(), fmt.Sprintf("termiscope_backup_%d.db", time.Now().Unix()))
 
 	// Use SQLite's VACUUM INTO for a consistent backup
 	err := h.db.Exec(fmt.Sprintf("VACUUM INTO '%s'", tmpBackup)).Error
@@ -48,7 +48,7 @@ func (h *SystemHandler) Backup(c *gin.Context) {
 
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Transfer-Encoding", "binary")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=webssh_backup_%s.db", time.Now().Format("20060102_150405")))
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=termiscope_backup_%s.db", time.Now().Format("20060102_150405")))
 	c.Header("Content-Type", "application/octet-stream")
 	c.File(tmpBackup)
 }
@@ -68,7 +68,7 @@ func (h *SystemHandler) Restore(c *gin.Context) {
 	}
 
 	// Save uploaded file to temporary location
-	tmpFile := filepath.Join(os.TempDir(), "webssh_restore.db")
+	tmpFile := filepath.Join(os.TempDir(), "termiscope_restore.db")
 	if err := c.SaveUploadedFile(file, tmpFile); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to save uploaded file")
 		return

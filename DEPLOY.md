@@ -1,10 +1,10 @@
 # Production Deployment Guide
 
-This guide provides instructions for deploying WebSSH in a production environment.
+This guide provides instructions for deploying TermiScope in a production environment.
 
 ## 1. Docker Deployment (Recommended)
 
-WebSSH is designed to be easily deployed using Docker.
+TermiScope is designed to be easily deployed using Docker.
 
 ### Steps:
 1. Clone the repository to your server.
@@ -51,8 +51,8 @@ server {
 ## 3. Security Best Practices
 
 1. **Change Default Password**: Change the `admin` password immediately after first login.
-2. **JWT Secret**: Set a strong `WEBSSH_JWT_SECRET` in your environment variables.
-3. **Encryption Key**: Use a persistent `WEBSSH_ENCRYPTION_KEY` to ensure you can decrypt host information across restarts.
+2. **JWT Secret**: Set a strong `TermiScope_JWT_SECRET` in your environment variables.
+3. **Encryption Key**: Use a persistent `TermiScope_ENCRYPTION_KEY` to ensure you can decrypt host information across restarts.
 4. **Firewall**: Ensure port `9287` (or your chosen port) is protected and only accessible via your reverse proxy.
 
 ## 4. Troubleshooting

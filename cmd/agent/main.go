@@ -23,7 +23,7 @@ type InterfaceData struct {
 	Tx   uint64 `json:"tx"`
 }
 
-// MetricData matches the webssh backend struct
+// MetricData matches the termiscope backend struct
 type MetricData struct {
 	HostID     uint64          `json:"host_id"`
 	Uptime     uint64          `json:"uptime"`

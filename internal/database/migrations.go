@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ihxw/webssh/internal/models"
+	"github.com/ihxw/termiscope/internal/models"
 	"gorm.io/gorm"
 )
 

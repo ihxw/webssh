@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ihxw/webssh/internal/middleware"
-	"github.com/ihxw/webssh/internal/models"
-	"github.com/ihxw/webssh/internal/utils"
+	"github.com/ihxw/termiscope/internal/middleware"
+	"github.com/ihxw/termiscope/internal/models"
+	"github.com/ihxw/termiscope/internal/utils"
 	"gorm.io/gorm"
 )
 

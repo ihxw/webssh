@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ihxw/webssh/internal/utils"
+	"github.com/ihxw/termiscope/internal/utils"
 )
 
 // AuthMiddleware validates JWT token and sets user context

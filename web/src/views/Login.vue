@@ -12,7 +12,7 @@
     <div class="login-box">
       <div class="login-title">
         <CodeOutlined style="font-size: 32px; margin-bottom: 8px" />
-        <div>WebSSH</div>
+        <div>TermiScope</div>
       </div>
       
       <!-- Step 1: Username and Password -->

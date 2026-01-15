@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ihxw/webssh/internal/config"
-	"github.com/ihxw/webssh/internal/database"
-	"github.com/ihxw/webssh/internal/handlers"
-	"github.com/ihxw/webssh/internal/middleware"
+	"github.com/ihxw/termiscope/internal/config"
+	"github.com/ihxw/termiscope/internal/database"
+	"github.com/ihxw/termiscope/internal/handlers"
+	"github.com/ihxw/termiscope/internal/middleware"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 

@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ihxw/webssh/internal/config"
-	"github.com/ihxw/webssh/internal/middleware"
-	"github.com/ihxw/webssh/internal/models"
-	"github.com/ihxw/webssh/internal/ssh"
-	"github.com/ihxw/webssh/internal/utils"
+	"github.com/ihxw/termiscope/internal/config"
+	"github.com/ihxw/termiscope/internal/middleware"
+	"github.com/ihxw/termiscope/internal/models"
+	"github.com/ihxw/termiscope/internal/ssh"
+	"github.com/ihxw/termiscope/internal/utils"
 	"github.com/pkg/sftp"
 	"gorm.io/gorm"
 )

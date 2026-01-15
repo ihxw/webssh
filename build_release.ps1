@@ -1,4 +1,4 @@
-# WebSSH Release Build Script
+# TermiScope Release Build Script
 # usage: .\build_release.ps1
 
 $ErrorActionPreference = "Stop"
@@ -20,7 +20,7 @@ $Targets = @(
     @{ OS = "darwin";  Arch = "arm64"; Ext = "";     Archive = "tar.gz" }
 )
 
-Write-Host "Starting WebSSH Release Build..." -ForegroundColor Cyan
+Write-Host "Starting TermiScope Release Build..." -ForegroundColor Cyan
 
 # 1. Environment Check
 Write-Host "1. Checking environment..." -ForegroundColor Yellow

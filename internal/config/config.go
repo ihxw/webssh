@@ -55,7 +55,7 @@ func LoadConfig() (*Config, error) {
 	// Set defaults
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.mode", "debug")
-	viper.SetDefault("database.path", "./data/webssh.db")
+	viper.SetDefault("database.path", "./data/termiscope.db")
 	viper.SetDefault("ssh.timeout", "30s")
 	viper.SetDefault("ssh.idle_timeout", "30m")
 	viper.SetDefault("ssh.max_connections_per_user", 10)

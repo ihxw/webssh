@@ -1,14 +1,14 @@
 version: '3.8'
 
 services:
-  webssh:
+  termiscope:
     build: .
-    container_name: webssh
+    container_name: termiscope
     ports:
       - "3000:3000"
     volumes:
       - ./data:/app/data
     environment:
-      - WEBSSH_PORT=3000
-      - WEBSSH_DB_PATH=/app/data/webssh.db
+      - termiscope_PORT=3000
+      - termiscope_DB_PATH=/app/data/termiscope.db
     restart: always
