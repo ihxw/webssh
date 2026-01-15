@@ -49,6 +49,7 @@
           size="small"
           @edit="onTabEdit"
           class="terminal-tabs"
+          :class="{ 'light-mode': !themeStore.isDark }"
           style="flex: 1; display: flex; flex-direction: column; overflow: hidden"
         >
           <a-tab-pane
@@ -150,7 +151,7 @@ export default {
 </script>
 
 <script setup>
-import { ref, onMounted, createVNode } from 'vue'
+import { ref, onMounted, onActivated, createVNode } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import {
   DatabaseOutlined,
@@ -160,11 +161,13 @@ import {
   VideoCameraOutlined
 } from '@ant-design/icons-vue'
 import { useSSHStore } from '../stores/ssh'
+import { useThemeStore } from '../stores/theme'
 import { useI18n } from 'vue-i18n'
 import TerminalComponent from '../components/Terminal.vue'
 
 const { t } = useI18n()
 const sshStore = useSSHStore()
+const themeStore = useThemeStore()
 
 const selectedHostId = ref(null)
 const activeTerminalKey = ref(null)
@@ -189,12 +192,25 @@ const hostForm = ref({
 
 onMounted(async () => {
   loading.value = true
+  
+  // Set active terminal if exists (e.g. navigating from HostManagement)
+  if (sshStore.currentTerminalId) {
+    activeTerminalKey.value = sshStore.currentTerminalId
+  }
+
   try {
     await sshStore.fetchHosts()
   } catch (error) {
     message.error(t('host.failLoad'))
   } finally {
     loading.value = false
+  }
+})
+
+// Using keep-alive, so rely on onActivated to sync state when switching back
+onActivated(() => {
+  if (sshStore.currentTerminalId) {
+    activeTerminalKey.value = sshStore.currentTerminalId
   }
 })
 
@@ -374,10 +390,10 @@ const closeTerminal = (terminalId) => {
   margin-right: 1px;
   border-radius: 0;
   color: #969696;
-  padding: 8px 16px;
+  padding: 4px 12px;
   transition: none;
-  height: 35px;
-  line-height: 19px;
+  height: 28px;
+  line-height: 20px;
   font-family: 'Segoe WPC', 'Segoe UI', sans-serif;
   font-size: 13px;
 }
@@ -420,6 +436,46 @@ const closeTerminal = (terminalId) => {
 :deep(.terminal-tabs .ant-tabs-nav-add:hover) {
   background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
+}
+
+/* Light Mode Styles */
+:deep(.terminal-tabs.light-mode.ant-tabs-card > .ant-tabs-nav) {
+  background-color: #f3f3f3;
+  border-bottom: 1px solid #d4d4d4;
+}
+
+:deep(.terminal-tabs.light-mode.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab) {
+  background: #ececec;
+  color: #616161;
+}
+
+:deep(.terminal-tabs.light-mode.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab:hover) {
+  background: #e6e6e6;
+  color: #333333;
+}
+
+:deep(.terminal-tabs.light-mode.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active) {
+  background: #ffffff;
+  color: #333333;
+  border-top: 1px solid #007acc;
+}
+
+:deep(.terminal-tabs.light-mode.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-remove) {
+  color: #999999;
+}
+
+:deep(.terminal-tabs.light-mode.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-remove:hover) {
+  color: #333333;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+:deep(.terminal-tabs.light-mode .ant-tabs-nav-add) {
+  color: #999999;
+}
+
+:deep(.terminal-tabs.light-mode .ant-tabs-nav-add:hover) {
+  background: rgba(0, 0, 0, 0.05);
+  color: #333333;
 }
 
 /* Dark mode adjustment helper if needed, though specific colors above are hardcoded for dark theme concept */

@@ -149,14 +149,14 @@ onMounted(async () => {
   if (authStore.isAuthenticated && !authStore.user) {
     try {
       await authStore.fetchCurrentUser()
-      console.log('User info loaded:', authStore.user)
+    //  console.log('User info loaded:', authStore.user)
     } catch (error) {
       console.error('Failed to fetch user info:', error)
       // If token is invalid, redirect to login
       router.push('/login')
     }
   } else {
-    console.log('Current user:', authStore.user)
+   // console.log('Current user:', authStore.user)
   }
 })
 

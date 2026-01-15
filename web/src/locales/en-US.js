@@ -61,6 +61,7 @@ export default {
         recordNextSession: 'Record Next Session',
         noActiveTerminals: 'No active terminals',
         connectToHost: 'Connect to SSH Host',
+        connect: 'Connect',
         connecting: 'Connecting...',
         connected: 'Connected',
         disconnected: 'Disconnected',

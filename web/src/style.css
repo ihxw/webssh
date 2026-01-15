@@ -125,7 +125,7 @@ body {
 /* Tab styles for terminal */
 .terminal-tabs .ant-tabs-nav {
   margin-bottom: 0;
-  padding: 4px 8px 0;
+  /* padding: 4px 8px 0; */
 }
 
 .terminal-tabs .ant-tabs-tab {

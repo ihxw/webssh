@@ -61,6 +61,7 @@ export default {
         recordNextSession: '录制下次会话',
         noActiveTerminals: '没有活动的终端',
         connectToHost: '连接到 SSH 主机',
+        connect: '连接',
         connecting: '连接中...',
         connected: '已连接',
         disconnected: '已断开',

@@ -29,7 +29,7 @@
             <a-space>
               <a-button size="small" @click="handleConnect(record)">
                 <LinkOutlined />
-                {{ t('terminal.connected') }}
+                {{ t('terminal.connect') }}
               </a-button>
               <a-button size="small" @click="handleEdit(record)">
                 <EditOutlined />
