@@ -1,50 +1,129 @@
 # TermiScope
-本项目代码全部由AI编写，后续bug也由AI修复.  
-A modern, web-based SSH terminal designed for simplicity, security, and power.
 
-## Features
+<div align="center">
+  <img src="./web/public/favicon.ico" width="100" />
+  <h1>TermiScope</h1>
+  <p>
+    <strong>Modern, Lightweight Server Management & Monitoring Platform</strong>
+  </p>
+  <p>
+    <a href="https://go.dev/"><img src="https://img.shields.io/badge/Backend-Go-blue.svg" alt="Go"></a>
+    <a href="https://vuejs.org/"><img src="https://img.shields.io/badge/Frontend-Vue3-green.svg" alt="Vue 3"></a>
+    <a href="https://hub.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-blue.svg" alt="Docker"></a>
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
+  </p>
+</div>
 
-- 🚀 **Fast & Responsive**: Built with Go, Vue 3, and xterm.js for high-performance terminal emulation.
-- 📂 **SFTP Support**: Integrated file explorer for uploading, downloading, and managing files.
-- 📹 **Session Recording**: Record your SSH sessions and replay them later using an integrated player.
-- �?**Quick Commands**: Reusable command templates for common tasks.
-- 🔒 **Secure**: JWT-based authentication, one-time WebSocket tickets, and AES-encrypted host data.
-- 💾 **Session Persistence**: Sessions stay active even when navigating through the dashboard.
-- 🌗 **Theme Support**: Fully optimized for Light and Dark modes.
+TermiScope is a powerful, self-hosted server management tool designed simplify your DevOps workflow. It combines a fully-featured web SSH terminal with comprehensive server monitoring and network traffic management.
 
-## Quick Start
+## ✨ Features
 
-### Using Docker (Recommended)
+### 🖥️ Web Terminal
+- **Full SSH Client**: Built on `xterm.js`, supporting all standard SSH interactions.
+- **Theme Support**: Includes 100+ VS Code-like themes (Dracula, One Dark, Monokai, etc.) with transparent background support.
+- **SFTP Integration**: Drag-and-drop file uploads/downloads via Zmodem or built-in SFTP browser.
+- **Session Recording**: Automatically record sessions (`.cast` format) for audit and playback.
 
-```bash
-docker-compose up -d
+### 📊 Server Monitoring
+- **Multi-Platform Agent**: Lightweight agents for **Linux**, **Windows**, and **macOS**.
+- **Real-time Metrics**: Dashboards for CPU, RAM, Disk, and Network usage.
+- **Detailed Network Stats**: Monitor per-interface Rx/Tx rates and monthly traffic usage.
+- **One-Click Deploy**: Automatically deploy monitoring agents to your SSH hosts via the dashboard.
+
+### 🚦 Traffic Management
+- **Traffic Limits**: Set monthly data caps (e.g., 1TB) for your servers.
+- **Billing Cycle**: Configure billing reset days (e.g., reset on the 1st of every month).
+- **Visual Tracking**: Progress bars and alerts for traffic usage.
+
+### 🔒 Security
+- **Two-Factor Authentication (2FA)**: Secure your account with TOTP (Google Authenticator, Authy).
+- **Encryption**: Sensitive credentials (passwords, private keys) are AES-encrypted in the database.
+- **Audit Logs**: Detailed login and connection history.
+
+---
+
+## 🚀 Quick Start
+
+### Docker Compose (Recommended)
+
+```yaml
+version: '3'
+services:
+  termiscope:
+    image: termiscope:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: always
 ```
-Access the app at `http://localhost:9287`. Default credentials: `admin` / `admin123`.
 
-### Local Development
+Access the dashboard at `http://localhost:8080`.
+Default User: `admin` / `password` (Change immediately!)
 
-1. **Backend**:
+### Manual Installation
+
+Download the latest release from the [Releases](https://github.com/ihxw/TermiScope/releases) page.
+
+1. **Unzip** the archive (`TermiScope-1.2.2-linux-amd64.tar.gz`).
+2. **Run** the server:
    ```bash
-   go run cmd/server/main.go
+   chmod +x TermiScope
+   ./TermiScope
    ```
-2. **Frontend**:
+
+---
+
+## 🛠️ Development
+
+### Prerequisites
+- Go 1.23+
+- Node.js 20+
+- PowerShell (for build scripts)
+
+### Setup
+
+1. **Clone the repository**:
    ```bash
-   cd web
-   npm install
-   npm run dev
+   git clone https://github.com/ihxw/TermiScope.git
+   cd TermiScope
    ```
 
-## Technology Stack
+2. **Run Development Server** (Windows):
+   ```powershell
+   ./dev_run.ps1
+   ```
+   This will start both the Go backend (port 8080) and Vue frontend (port 5173).
 
-- **Backend**: Go (Gin, GORM, SQLite, x/crypto/ssh)
-- **Frontend**: Vue 3, Ant Design Vue, Pinia, xterm.js
-- **Database**: SQLite (built-in, pure Go implementation)
+3. **Build Release**:
+   ```powershell
+   ./build_release.ps1
+   ```
+   Artifacts will be generated in the `release/` directory.
 
-## Documentation
+---
 
-- [Deployment Guide](./DEPLOY.md)
-- [Project Requirements](./需�?md)
+## 📦 Agent Deployment
 
-## License
+To monitor a server, you need to install the TermiScope Agent.
 
-MIT
+**Automatic Deployment**:
+1. Go to the **Dashboard**.
+2. Click the **Deploy Monitor** button on your SSH host card.
+3. TermiScope will upload and install the agent automatically.
+
+**Manual Deployment**:
+1. Download the agent binary for your OS from the release.
+2. Run it on the target machine:
+   ```bash
+   # Linux/macOS
+   chmod +x termiscope-agent
+   ./termiscope-agent -server http://YOUR_TERMISCOPE_IP:8080 -secret YOUR_AppSecret -id HOST_ID
+   ```
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
