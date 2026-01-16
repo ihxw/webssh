@@ -154,7 +154,12 @@ foreach ($Target in $Targets) {
     $Env:GOARCH = $Arch
     $Env:CGO_ENABLED = "0"
     
-    go build -o $BinaryPath ./cmd/server/main.go
+    # Read version from package.json
+    $PackageJson = Get-Content (Join-Path $WebDir "package.json") | ConvertFrom-Json
+    $Version = $PackageJson.version
+    Write-Host "   Using Version: $Version"
+
+    go build -ldflags "-X 'github.com/ihxw/termiscope/internal/config.Version=$Version'" -o $BinaryPath ./cmd/server/main.go
     
     if (-not (Test-Path $BinaryPath)) {
         Write-Error "Build failed for $OS/$Arch"

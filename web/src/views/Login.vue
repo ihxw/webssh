@@ -139,8 +139,7 @@
       />
 
       <div class="version-info" style="margin-top: 24px; text-align: center; color: #8c8c8c; font-size: 12px">
-        <div>{{ t('common.frontendVersion') }}: {{ frontendVersion }}</div>
-        <div>{{ t('common.backendVersion') }}: {{ backendVersion }}</div>
+        <div>v{{ frontendVersion }}</div>
       </div>
     </div>
   </div>

@@ -7,7 +7,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-const Version = "1.2.1"
+// Version is set via ldflags during build. Default is "dev".
+var Version = "dev"
 
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
