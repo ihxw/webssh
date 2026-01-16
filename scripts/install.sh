@@ -72,31 +72,34 @@ else
 
     echo "Detected System: $OS/$ARCH"
 
-    # Get Latest Version
+    # Get Latest Version Information
     echo "Fetching latest version info..."
     LATEST_URL="https://api.github.com/repos/ihxw/TermiScope/releases/latest"
-    # Fallback to grep if jq not installed
-    VERSION=$(curl -s $LATEST_URL | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    RESPONSE=$(curl -s $LATEST_URL)
+    
+    # Extract version tag for display
+    VERSION=$(echo "$RESPONSE" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
     
     if [ -z "$VERSION" ]; then
         echo "Error: Could not retrieve latest version from GitHub."
+        # Print response for debugging if needed, or just exit
         exit 1
     fi
     
     echo "Latest Version: $VERSION"
 
-    # Construct Download URL
-    # Format: TermiScope-v1.2.6-linux-amd64.tar.gz
-    # Note: Tag usually includes 'v', but filename might repeat it or not depending on build script.
-    # Build script: $PackageName = "$AppName-$Version-$OS-$Arch" -> TermiScope-1.2.6-linux-amd64
-    # Wait, package.json version is 1.2.6 (no v), Release Tag is v1.2.6 (with v).
-    # Need to handle 'v' prefix carefully.
-    
-    # Strip 'v' from version for filename if needed
-    CLEAN_VERSION=${VERSION#v}
-    
-    FILE_NAME="TermiScope-${CLEAN_VERSION}-${OS}-${ARCH}.tar.gz"
-    DOWNLOAD_URL="https://github.com/ihxw/TermiScope/releases/download/${VERSION}/${FILE_NAME}"
+    # Find the correct asset URL for this architecture
+    # Pattern: ends with linux-amd64.tar.gz or linux-arm64.tar.gz
+    SEARCH_PATTERN="linux-${ARCH}\.tar\.gz"
+    DOWNLOAD_URL=$(echo "$RESPONSE" | grep -o 'https://[^"]*' | grep -E "$SEARCH_PATTERN" | head -n 1)
+
+    if [ -z "$DOWNLOAD_URL" ]; then
+        echo "Error: Could not find a release asset for architecture: linux-$ARCH"
+        exit 1
+    fi
+
+    # Extract filename from URL
+    FILE_NAME=$(basename "$DOWNLOAD_URL")
     
     TMP_DIR=$(mktemp -d)
     echo "Downloading from $DOWNLOAD_URL ..."
@@ -110,13 +113,13 @@ else
     echo "Extracting..."
     tar -xzf "$TMP_DIR/$FILE_NAME" -C "$TMP_DIR"
     
-    # The archive usually contains a folder usually named TermiScope-version... or just contents?
-    # Build script: $OutputDir = Join-Path $ReleaseDir $PackageName
-    # So it extracts to a folder named TermiScope-1.2.6-linux-amd64
-    EXTRACTED_DIR="$TMP_DIR/TermiScope-${CLEAN_VERSION}-${OS}-${ARCH}"
-    
-    if [ ! -d "$EXTRACTED_DIR" ]; then
-        # Fallback: maybe flattened?
+    # Find the extracted directory (it should provide TermiScope binary)
+    # We look for a directory that contains the 'TermiScope' binary or 'install.sh'
+    # Start by guessing the pattern TermiScope*
+    EXTRACTED_DIR=$(find "$TMP_DIR" -maxdepth 1 -type d -name "TermiScope*" | head -n 1)
+
+    if [ -z "$EXTRACTED_DIR" ]; then
+        # If no subdirectory found, assume flattened
         EXTRACTED_DIR="$TMP_DIR"
     fi
 
