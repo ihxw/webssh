@@ -153,8 +153,18 @@ foreach ($Target in $Targets) {
     if ($OS -eq "linux") {
         $ScriptDir = Join-Path $PSScriptRoot "scripts"
         if (Test-Path $ScriptDir) {
-           Copy-Item -Path (Join-Path $ScriptDir "install.sh") -Destination $OutputDir
-           Copy-Item -Path (Join-Path $ScriptDir "uninstall.sh") -Destination $OutputDir
+            $Scripts = @("install.sh", "uninstall.sh")
+            foreach ($Script in $Scripts) {
+                $Src = Join-Path $ScriptDir $Script
+                if (Test-Path $Src) {
+                    $Dest = Join-Path $OutputDir $Script
+                    # Read content and replace CRLF with LF to ensure Linux compatibility
+                    $Content = Get-Content $Src -Raw
+                    $Content = $Content -replace "`r`n", "`n"
+                    # Write with NO BOM and LF
+                    [System.IO.File]::WriteAllText($Dest, $Content)
+                }
+            }
         }
     }
 
