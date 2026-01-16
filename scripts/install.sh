@@ -19,7 +19,7 @@ fi
 
 echo -e "${GREEN}=== TermiScope Installer ===${NC}"
 
-# 1. Determine Install Directory
+# 2. Determine Install Directory
 if [ -d "$DEFAULT_INSTALL_DIR" ]; then
     echo -e "${YELLOW}Detected existing installation at $DEFAULT_INSTALL_DIR${NC}"
     INSTALL_DIR="$DEFAULT_INSTALL_DIR"
@@ -33,35 +33,28 @@ fi
 
 echo -e "Installing to: ${GREEN}$INSTALL_DIR${NC}"
 
-# 2. Stop Service if running
+# 3. Stop Service if running
 if systemctl is-active --quiet $SERVICE_NAME; then
     echo -e "${YELLOW}Stopping existing service...${NC}"
     systemctl stop $SERVICE_NAME
 fi
 
-# 3. Create Directories
+# 4. Create Directories
 echo "Creating directories..."
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR/configs"
 mkdir -p "$INSTALL_DIR/data"
 mkdir -p "$INSTALL_DIR/logs"
 mkdir -p "$INSTALL_DIR/agents"
-# Ensure parent web dir exists before copying dist
 mkdir -p "$INSTALL_DIR/web" 
 
-# 4. Copy Files
+# 5. Copy Files
 SOURCE_DIR=$(dirname "$(readlink -f "$0")")
 
 echo "Copying binary..."
-# Detect if binary is named TermiScope or TermiScope-linux-*
-# In the release folder, it should be just TermiScope (renamed by user?) or TermiScope-linux-amd64
-# The build script puts "TermiScope" (no ext for linux) into the release folder structure?
-# Let's check build_release.ps1. It outputs `$BinaryName = "$AppName$Ext"`.
-# For linux, Ext is empty. So specific binary name is TermiScope.
 if [ -f "$SOURCE_DIR/TermiScope" ]; then
     cp -f "$SOURCE_DIR/TermiScope" "$INSTALL_DIR/"
 else
-    # Fallback try to find any TermiScope* binary
     BINARY=$(find "$SOURCE_DIR" -maxdepth 1 -name "TermiScope*" -type f -not -name "*.*" | head -n 1)
     if [ -n "$BINARY" ]; then
          cp -f "$BINARY" "$INSTALL_DIR/TermiScope"
@@ -73,7 +66,7 @@ fi
 chmod +x "$INSTALL_DIR/TermiScope"
 
 echo "Copying web assets..."
-rm -rf "$INSTALL_DIR/web/dist" # Clean old assets
+rm -rf "$INSTALL_DIR/web/dist"
 if [ -d "$SOURCE_DIR/web/dist" ]; then
     cp -r "$SOURCE_DIR/web/dist" "$INSTALL_DIR/web/"
 else
@@ -82,28 +75,36 @@ else
 fi
 
 echo "Copying agents..."
-# Clean old agents to ensure versions match? Or just overwrite.
 cp -r "$SOURCE_DIR/agents/"* "$INSTALL_DIR/agents/" 2>/dev/null || true
 
 echo "Copying uninstall script..."
 if [ -f "$SOURCE_DIR/uninstall.sh" ]; then
     cp -f "$SOURCE_DIR/uninstall.sh" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/uninstall.sh"
+    # Create symlink for easier access? Optional.
 fi
 
-# 5. Config Handling
+# 6. Config Handling
 if [ -f "$INSTALL_DIR/configs/config.yaml" ]; then
     echo -e "${YELLOW}Preserving existing configuration.${NC}"
 else
     echo "Installing default configuration..."
     if [ -f "$SOURCE_DIR/configs/config.yaml" ]; then
         cp "$SOURCE_DIR/configs/config.yaml" "$INSTALL_DIR/configs/"
+        
+        # Prompt for Port
+        read -p "Enter server port [8080]: " USER_PORT
+        PORT=${USER_PORT:-8080}
+        
+        # Update Port in config
+        sed -i "s/port: .*/port: $PORT/" "$INSTALL_DIR/configs/config.yaml"
+        echo -e "Set port to ${GREEN}$PORT${NC}"
     else
         echo -e "${RED}Warning: Default config not found in package!${NC}"
     fi
 fi
 
-# 6. Systemd Service
+# 7. Systemd Service
 echo "Configuring systemd service..."
 cat > "/etc/systemd/system/$SERVICE_NAME.service" <<EOF
 [Unit]
@@ -128,8 +129,19 @@ echo -e "${GREEN}Starting service...${NC}"
 systemctl start $SERVICE_NAME
 
 echo -e "${GREEN}=== Installation Complete ===${NC}"
-echo -e "Dashboard: http://<your-ip>:8080"
+echo -e "Dashboard: http://<your-ip>:${PORT:-8080}"
 echo -e "Config: $INSTALL_DIR/configs/config.yaml"
-if [ -f "$INSTALL_DIR/uninstall.sh" ]; then
-    echo -e "To uninstall: $INSTALL_DIR/uninstall.sh"
+
+# 8. Cleanup Prompt
+read -p "Clean up installation temporary files? [y/N] " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Removing $SOURCE_DIR ..."
+    # Be careful not to delete system root if running from strange place
+    if [[ "$SOURCE_DIR" != "/" && "$SOURCE_DIR" != "/root" && "$SOURCE_DIR" != "/home" ]]; then
+       rm -rf "$SOURCE_DIR"
+       echo "Cleanup complete."
+    else
+       echo "Skipping cleanup (unsafe source directory)."
+    fi
 fi
