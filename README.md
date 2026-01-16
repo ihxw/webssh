@@ -115,6 +115,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### GitHub Actions
 ```shell
+git add .
+git commit -m "Add release workflow"
+git push origin main
 git tag v1.2.3
 git push origin v1.2.3
 ```
