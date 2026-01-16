@@ -124,7 +124,7 @@ foreach ($Target in $Targets) {
     $Ext = $Target.Ext
     $ArchiveType = $Target.Archive
     
-    $PackageName = "$AppName-$OS-$Arch"
+    $PackageName = "$AppName-$Version-$OS-$Arch"
     $OutputDir = Join-Path $ReleaseDir $PackageName
     $BinaryName = "$AppName$Ext"
     $BinaryPath = Join-Path $OutputDir $BinaryName
