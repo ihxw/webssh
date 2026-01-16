@@ -1,7 +1,7 @@
 # TermiScope
 
 <div align="center">
-  <img src="./web/public/favicon.ico" width="100" />
+  <img src="./web/public/logo.png" width="100" />
   <h1>TermiScope</h1>
   <p>
     <strong>Modern, Lightweight Server Management & Monitoring Platform</strong>
@@ -120,8 +120,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 git add .
 git commit -m "Add release workflow"
 git push origin main
-git tag v1.2.6
-git push origin v1.2.6
+git tag v1.2.7
+git push origin v1.2.7
 
 
 
