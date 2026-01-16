@@ -111,19 +111,3 @@ To monitor a server, you need to install the TermiScope Agent.
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 
-## 自动化构建
-
-### GitHub Actions
-```shell
-
-
-git add .
-git commit -m "Add release workflow"
-git push origin main
-git tag v1.2.9
-git push origin v1.2.9
-
-
-
-```
-TermiScope 使用 GitHub Actions 自动化构建和发布。  
