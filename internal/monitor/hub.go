@@ -3,10 +3,12 @@ package monitor
 import (
 	"encoding/json"
 	"log"
+	"runtime/debug"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/ihxw/termiscope/internal/utils"
 )
 
 // InterfaceData holds per-interface metrics
@@ -69,6 +71,17 @@ func NewHub() *Hub {
 }
 
 func (h *Hub) Run() {
+	defer func() {
+		if err := recover(); err != nil {
+			utils.LogError("Monitor Hub Panic: %v\nStack: %s", err, string(debug.Stack()))
+			// Optionally restart? For now just log.
+			// If Hub dies, monitoring stops updating.
+			// Ideally we should restart it, but let's just log for now to match "Crash Prevention" (prevent whole server crash, but Hub routine crashing is localized).
+			// If we want it to survive, we need a loop outside.
+			// Re-running Run() in a new goroutine might be dangerous if state is corrupted.
+		}
+	}()
+
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 

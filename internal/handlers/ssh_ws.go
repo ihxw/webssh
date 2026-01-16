@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -271,6 +272,11 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 
 	// Ping loop to keep connection alive
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				utils.LogError("SSH Ping Loop Panic: %v\nStack: %s", r, string(debug.Stack()))
+			}
+		}()
 		ticker := time.NewTicker(20 * time.Second)
 		defer ticker.Stop()
 		for {
@@ -287,6 +293,11 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 
 	// Read from SSH stdout and send to WebSocket
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				utils.LogError("SSH Stdout Loop Panic: %v\nStack: %s", r, string(debug.Stack()))
+			}
+		}()
 		buf := make([]byte, 1024)
 		start := time.Now()
 		for {
@@ -318,6 +329,11 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 
 	// Read from SSH stderr and send to WebSocket
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				utils.LogError("SSH Stderr Loop Panic: %v\nStack: %s", r, string(debug.Stack()))
+			}
+		}()
 		buf := make([]byte, 1024)
 		for {
 			n, err := stderr.Read(buf)
@@ -338,6 +354,12 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 
 	// Read from WebSocket and send to SSH stdin
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				utils.LogError("SSH Stdin Loop Panic: %v\nStack: %s", r, string(debug.Stack()))
+				done <- true // Ensure we close cleanup
+			}
+		}()
 		for {
 			if idleTimeout > 0 {
 				ws.SetReadDeadline(time.Now().Add(idleTimeout))

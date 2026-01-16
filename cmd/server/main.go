@@ -12,6 +12,7 @@ import (
 	"github.com/ihxw/termiscope/internal/database"
 	"github.com/ihxw/termiscope/internal/handlers"
 	"github.com/ihxw/termiscope/internal/middleware"
+	"github.com/ihxw/termiscope/internal/utils"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -47,17 +48,21 @@ func main() {
 		Compress:   true,
 	})
 
+	// Initialize separate Error Logger
+	utils.InitErrorLogger("logs/error.log")
+
 	// Set Gin mode
 	if cfg.Server.Mode == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Create router
-	router := gin.Default()
+	// Create router with no default middleware
+	router := gin.New()
 
 	// Apply middleware
 	router.Use(middleware.CORS())
-	router.Use(middleware.Logger())
+	router.Use(middleware.Logger())         // Access logs
+	router.Use(middleware.CustomRecovery()) // Custom panic recovery to error.log
 
 	// Global Middlewares
 	router.Use(middleware.SecurityMiddleware())

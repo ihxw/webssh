@@ -221,6 +221,35 @@ func (h *SftpHandler) Upload(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "file uploaded successfully"})
 }
 
+// deleteRecursive handles recursive deletion of files and directories
+func (h *SftpHandler) deleteRecursive(client *sftp.Client, remotePath string) error {
+	stat, err := client.Stat(remotePath)
+	if err != nil {
+		return err
+	}
+
+	if !stat.IsDir() {
+		return client.Remove(remotePath)
+	}
+
+	// It's a directory, list contents
+	files, err := client.ReadDir(remotePath)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		// Use simple string concatenation or path.Join to ensure forward slashes for SFTP
+		// filepath.Join might use backslashes on Windows which can confuse some SFTP servers
+		childPath := filepath.ToSlash(filepath.Join(remotePath, file.Name()))
+		if err := h.deleteRecursive(client, childPath); err != nil {
+			return err
+		}
+	}
+
+	return client.RemoveDirectory(remotePath)
+}
+
 // Delete handles DELETE /api/sftp/delete/:hostId?path=...
 func (h *SftpHandler) Delete(c *gin.Context) {
 	userID := middleware.GetUserID(c)
@@ -240,12 +269,8 @@ func (h *SftpHandler) Delete(c *gin.Context) {
 	defer sftpClient.Close()
 	defer sshClient.Close()
 
-	err = sftpClient.Remove(path)
-	if err != nil {
-		// Try to remove directory if remove file failed
-		err = sftpClient.RemoveDirectory(path)
-	}
-
+	// Use recursive delete to handle both files and non-empty directories
+	err = h.deleteRecursive(sftpClient, path)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to delete: "+err.Error())
 		return

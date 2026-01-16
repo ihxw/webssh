@@ -43,7 +43,7 @@
             <div style="margin-bottom: 8px">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
                 <span>{{ t('monitor.cpu') }}</span>
-                <span>{{ host.cpu }}%</span>
+                <span>{{ formatCpu(host.cpu) }}%</span>
               </div>
               <a-progress :percent="host.cpu" :status="getStatus(host.cpu)" :show-info="false" stroke-linecap="square" />
             </div>
@@ -182,6 +182,10 @@ const formatBytes = (bytes) => {
 
 const formatSpeed = (bytesPerSec) => {
   return formatBytes(bytesPerSec) + '/s'
+}
+
+const formatCpu = (val) => {
+  return (val || 0).toFixed(2)
 }
 
 const getTrafficUsagePct = (host) => {

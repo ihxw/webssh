@@ -415,24 +415,74 @@ func (h *MonitorHandler) Deploy(c *gin.Context) {
 		return
 	}
 
-	// 2. Upload Binary
+	// 1.5. Stop existing service (if running) to release file lock
 	session, _ = client.NewSession()
-	// Create dir
-	setupCmd := "mkdir -p /opt/termiscope/agent"
-	session.Run(setupCmd)
+	stopCmd := "systemctl stop termiscope-agent || true"
+	if host.Username != "root" {
+		stopCmd = "echo '" + password + "' | sudo -S sh -c 'systemctl stop termiscope-agent || true'"
+	}
+	// We ignore errors here because the service might not exist yet
+	session.Run(stopCmd)
 	session.Close()
 
+	// 2. Setup Directory
 	session, _ = client.NewSession()
+	setupCmd := "mkdir -p /opt/termiscope/agent"
+	if host.Username != "root" {
+		setupCmd = "echo '" + password + "' | sudo -S mkdir -p /opt/termiscope/agent"
+	}
+	if out, err := session.CombinedOutput(setupCmd); err != nil {
+		log.Printf("Monitor Deploy: Setup dir failed: %v, Out: %s", err, string(out))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create directory: " + string(out)})
+		return
+	}
+	session.Close()
+
+	// 3. Upload Binary
+	remoteBinaryPath := "/opt/termiscope/agent/termiscope-agent"
+	uploadPath := remoteBinaryPath
+	if host.Username != "root" {
+		// Use unique temp file to avoid permission issues if specific file exists owned by root
+		uploadPath = fmt.Sprintf("/tmp/termiscope-agent-%d", time.Now().UnixNano())
+	}
+
+	session, _ = client.NewSession()
+	var stderrBuf bytes.Buffer
+	session.Stderr = &stderrBuf
+
 	go func() {
 		w, _ := session.StdinPipe()
 		w.Write(binaryContent)
 		w.Close()
 	}()
-	// Upload directly to file
-	remoteBinaryPath := "/opt/termiscope/agent/termiscope-agent"
-	if err := session.Run(fmt.Sprintf("cat > %s && chmod +x %s", remoteBinaryPath, remoteBinaryPath)); err != nil {
-		log.Printf("Monitor Deploy: Failed to upload binary: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload agent binary"})
+
+	if err := session.Run(fmt.Sprintf("cat > %s", uploadPath)); err != nil {
+		log.Printf("Monitor Deploy: Upload failed: %v, Stderr: %s", err, stderrBuf.String())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to upload file to %s: %s", uploadPath, stderrBuf.String())})
+		return
+	}
+	session.Close()
+
+	// 4. Move and Chmod
+	if host.Username != "root" {
+		session, _ = client.NewSession()
+		moveCmd := fmt.Sprintf("echo '%s' | sudo -S mv %s %s", password, uploadPath, remoteBinaryPath)
+		if out, err := session.CombinedOutput(moveCmd); err != nil {
+			log.Printf("Monitor Deploy: Move failed: %v, Out: %s", err, string(out))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to move binary: " + string(out)})
+			return
+		}
+		session.Close()
+	}
+
+	session, _ = client.NewSession()
+	chmodCmd := fmt.Sprintf("chmod +x %s", remoteBinaryPath)
+	if host.Username != "root" {
+		chmodCmd = fmt.Sprintf("echo '%s' | sudo -S chmod +x %s", password, remoteBinaryPath)
+	}
+	if out, err := session.CombinedOutput(chmodCmd); err != nil {
+		log.Printf("Monitor Deploy: Chmod failed: %v, Out: %s", err, string(out))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to chmod binary: " + string(out)})
 		return
 	}
 	session.Close()
@@ -474,7 +524,7 @@ WantedBy=multi-user.target
 
 	if host.Username != "root" && targetPath == "/tmp/termiscope-agent.service" {
 		session, _ := client.NewSession()
-		session.Run("echo " + password + " | sudo -S mv /tmp/termiscope-agent.service /etc/systemd/system/termiscope-agent.service")
+		session.Run("echo '" + password + "' | sudo -S mv /tmp/termiscope-agent.service /etc/systemd/system/termiscope-agent.service")
 		session.Close()
 	}
 
@@ -482,7 +532,7 @@ WantedBy=multi-user.target
 	session, _ = client.NewSession()
 	cmd := "systemctl daemon-reload && systemctl enable --now termiscope-agent"
 	if host.Username != "root" {
-		cmd = "echo " + password + " | sudo -S sh -c '" + cmd + "'"
+		cmd = "echo '" + password + "' | sudo -S sh -c '" + cmd + "'"
 	}
 	output, err = session.CombinedOutput(cmd)
 	if err != nil {
