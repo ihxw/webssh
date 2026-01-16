@@ -106,7 +106,7 @@ const settingsForm = reactive({
 const fetchSettings = async () => {
   try {
     const response = await api.get('/system/settings')
-    Object.assign(settingsForm, response.data) // Assuming response.data contains the settings object
+    Object.assign(settingsForm, response)
   } catch (err) {
     message.error(t('system.fetchSettingsFailed'))
   }
