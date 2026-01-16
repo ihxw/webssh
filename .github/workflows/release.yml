@@ -38,7 +38,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: release/*
+          files: |
+            release/*
+            scripts/install.sh
           generate_release_notes: true
           draft: false
           prerelease: false

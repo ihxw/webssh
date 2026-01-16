@@ -48,8 +48,90 @@ mkdir -p "$INSTALL_DIR/logs"
 mkdir -p "$INSTALL_DIR/agents"
 mkdir -p "$INSTALL_DIR/web" 
 
-# 5. Copy Files
+# 5. Copy Files / Download Logic
 SOURCE_DIR=$(dirname "$(readlink -f "$0")")
+
+# Check if we are in Offline Mode (Binary exists locally)
+if [ -f "$SOURCE_DIR/TermiScope" ]; then
+    echo "Files found locally. Proceeding with offline installation..."
+else
+    echo "Binary not found locally. Initiating Online Installation..."
+    
+    # Dependencies check
+    command -v curl >/dev/null 2>&1 || { echo >&2 "Error: curl is required but not installed."; exit 1; }
+    command -v tar >/dev/null 2>&1 || { echo >&2 "Error: tar is required but not installed."; exit 1; }
+
+    # Detect Arch
+    ARCH=$(uname -m)
+    case $ARCH in
+        x86_64)  ARCH="amd64" ;;
+        aarch64) ARCH="arm64" ;;
+        *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+    esac
+    OS="linux"
+
+    echo "Detected System: $OS/$ARCH"
+
+    # Get Latest Version
+    echo "Fetching latest version info..."
+    LATEST_URL="https://api.github.com/repos/ihxw/TermiScope/releases/latest"
+    # Fallback to grep if jq not installed
+    VERSION=$(curl -s $LATEST_URL | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    
+    if [ -z "$VERSION" ]; then
+        echo "Error: Could not retrieve latest version from GitHub."
+        exit 1
+    fi
+    
+    echo "Latest Version: $VERSION"
+
+    # Construct Download URL
+    # Format: TermiScope-v1.2.6-linux-amd64.tar.gz
+    # Note: Tag usually includes 'v', but filename might repeat it or not depending on build script.
+    # Build script: $PackageName = "$AppName-$Version-$OS-$Arch" -> TermiScope-1.2.6-linux-amd64
+    # Wait, package.json version is 1.2.6 (no v), Release Tag is v1.2.6 (with v).
+    # Need to handle 'v' prefix carefully.
+    
+    # Strip 'v' from version for filename if needed
+    CLEAN_VERSION=${VERSION#v}
+    
+    FILE_NAME="TermiScope-${CLEAN_VERSION}-${OS}-${ARCH}.tar.gz"
+    DOWNLOAD_URL="https://github.com/ihxw/TermiScope/releases/download/${VERSION}/${FILE_NAME}"
+    
+    TMP_DIR=$(mktemp -d)
+    echo "Downloading from $DOWNLOAD_URL ..."
+    curl -L -o "$TMP_DIR/$FILE_NAME" "$DOWNLOAD_URL"
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: Download failed."
+        exit 1
+    fi
+
+    echo "Extracting..."
+    tar -xzf "$TMP_DIR/$FILE_NAME" -C "$TMP_DIR"
+    
+    # The archive usually contains a folder usually named TermiScope-version... or just contents?
+    # Build script: $OutputDir = Join-Path $ReleaseDir $PackageName
+    # So it extracts to a folder named TermiScope-1.2.6-linux-amd64
+    EXTRACTED_DIR="$TMP_DIR/TermiScope-${CLEAN_VERSION}-${OS}-${ARCH}"
+    
+    if [ ! -d "$EXTRACTED_DIR" ]; then
+        # Fallback: maybe flattened?
+        EXTRACTED_DIR="$TMP_DIR"
+    fi
+
+    # Run the inner install script
+    echo "Running installer from downloaded package..."
+    if [ -f "$EXTRACTED_DIR/install.sh" ]; then
+        bash "$EXTRACTED_DIR/install.sh"
+        rm -rf "$TMP_DIR"
+        exit 0
+    else
+        echo "Error: install.sh not found in extracted package."
+        ls -R "$TMP_DIR"
+        exit 1
+    fi
+fi
 
 echo "Copying binary..."
 if [ -f "$SOURCE_DIR/TermiScope" ]; then

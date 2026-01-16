@@ -120,8 +120,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 git add .
 git commit -m "Add release workflow"
 git push origin main
-git tag v1.2.7
-git push origin v1.2.7
+git tag v1.2.8
+git push origin v1.2.8
 
 
 
