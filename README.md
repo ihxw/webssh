@@ -115,10 +115,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### GitHub Actions
 ```shell
+
+
 git add .
 git commit -m "Add release workflow"
 git push origin main
-git tag v1.2.5
-git push origin v1.2.5
+git tag v1.2.6
+git push origin v1.2.6
+
+
+
 ```
 TermiScope 使用 GitHub Actions 自动化构建和发布。  
