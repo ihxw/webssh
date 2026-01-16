@@ -128,5 +128,10 @@ func (c *Config) SaveConfig() error {
 	viper.Set("log.level", c.Log.Level)
 	viper.Set("log.file", c.Log.File)
 
+	// Ensure we have a config file path set
+	if viper.ConfigFileUsed() == "" {
+		viper.SetConfigFile("./configs/config.yaml")
+	}
+
 	return viper.WriteConfig()
 }

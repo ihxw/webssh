@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ihxw/termiscope/internal/config"
 	"github.com/ihxw/termiscope/internal/middleware"
+	"github.com/ihxw/termiscope/internal/models"
 	"github.com/ihxw/termiscope/internal/utils"
 	"gorm.io/gorm"
 )
@@ -152,6 +153,31 @@ func (h *SystemHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
+	// Update DB (Transaction)
+	err := h.db.Transaction(func(tx *gorm.DB) error {
+		updates := map[string]string{
+			"ssh.timeout":                  req.SSHTimeout,
+			"ssh.idle_timeout":             req.IdleTimeout,
+			"ssh.max_connections_per_user": fmt.Sprintf("%d", req.MaxConnectionsPerUser),
+			"security.login_rate_limit":    fmt.Sprintf("%d", req.LoginRateLimit),
+			"security.access_expiration":   req.AccessExpiration,
+			"security.refresh_expiration":  req.RefreshExpiration,
+		}
+
+		for key, value := range updates {
+			// Upsert
+			if err := tx.Model(&models.SystemConfig{}).Where("config_key = ?", key).Update("config_value", value).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to save configuration to database: "+err.Error())
+		return
+	}
+
 	// Update in-memory config
 	h.config.SSH.Timeout = req.SSHTimeout
 	h.config.SSH.IdleTimeout = req.IdleTimeout
@@ -159,12 +185,6 @@ func (h *SystemHandler) UpdateSettings(c *gin.Context) {
 	h.config.Security.LoginRateLimit = req.LoginRateLimit
 	h.config.Security.AccessExpiration = req.AccessExpiration
 	h.config.Security.RefreshExpiration = req.RefreshExpiration
-
-	// Save to file
-	if err := h.config.SaveConfig(); err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to save configuration: "+err.Error())
-		return
-	}
 
 	// Hot-reload rate limit if global limiter is set
 	if LoginRateLimiter != nil {

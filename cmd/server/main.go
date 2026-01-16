@@ -39,6 +39,12 @@ func main() {
 		log.Printf("Warning: Failed to cleanup stale logs: %v", err)
 	}
 
+	// Sync configuration from Database (System Settings)
+	// This ensures DB values override file/defaults, and seeds defaults if missing.
+	if err := config.SyncConfigFromDB(db, cfg); err != nil {
+		log.Printf("Warning: Failed to sync config from DB: %v", err)
+	}
+
 	// Configure logging
 	log.SetOutput(&lumberjack.Logger{
 		Filename:   "logs/server.log",
