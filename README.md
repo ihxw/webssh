@@ -44,24 +44,6 @@ TermiScope is a powerful, self-hosted server management tool designed simplify y
 
 ## 🚀 Quick Start
 
-### Docker Compose (Recommended)
-
-```yaml
-version: '3'
-services:
-  termiscope:
-    image: termiscope:latest
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-    restart: always
-```
-
-Access the dashboard at `http://localhost:8080`.
-Default User: `admin` / `password` (Change immediately!)
-
 ### Manual Installation
 
 Download the latest release from the [Releases](https://github.com/ihxw/TermiScope/releases) page.
@@ -127,3 +109,13 @@ To monitor a server, you need to install the TermiScope Agent.
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+
+## 自动化构建
+
+### GitHub Actions
+```shell
+git tag v1.2.3
+git push origin v1.2.3
+```
+TermiScope 使用 GitHub Actions 自动化构建和发布。  

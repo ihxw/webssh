@@ -149,6 +149,15 @@ foreach ($Target in $Targets) {
     New-Item -ItemType Directory -Path $AgentDest | Out-Null
     Copy-Item -Path "$AgentDir/*" -Destination $AgentDest
 
+    # Linux-specific: Copy Install Scripts
+    if ($OS -eq "linux") {
+        $ScriptDir = Join-Path $PSScriptRoot "scripts"
+        if (Test-Path $ScriptDir) {
+           Copy-Item -Path (Join-Path $ScriptDir "install.sh") -Destination $OutputDir
+           Copy-Item -Path (Join-Path $ScriptDir "uninstall.sh") -Destination $OutputDir
+        }
+    }
+
     # Build Go Binary
     $Env:GOOS = $OS
     $Env:GOARCH = $Arch
