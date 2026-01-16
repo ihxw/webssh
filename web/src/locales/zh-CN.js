@@ -231,6 +231,8 @@ export default {
         idleTimeout: 'SSH 空闲超时',
         maxConnectionsPerUser: '每用户最大连接数',
         loginRateLimit: '登录频率限制 (次/分钟)',
+        accessExpiration: '访问令牌过期时间',
+        refreshExpiration: '刷新令牌过期时间',
         saveSettingsSuccess: '设置保存成功',
         saveSettingsFailed: '设置保存失败',
         fetchSettingsFailed: '获取设置失败'

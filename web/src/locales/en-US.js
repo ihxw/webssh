@@ -230,6 +230,8 @@ export default {
         idleTimeout: 'SSH Idle Timeout',
         maxConnectionsPerUser: 'Max Connections Per User',
         loginRateLimit: 'Login Rate Limit (req/min)',
+        accessExpiration: 'Access Token Expiration',
+        refreshExpiration: 'Refresh Token Expiration',
         saveSettingsSuccess: 'Settings saved successfully',
         saveSettingsFailed: 'Failed to save settings',
         fetchSettingsFailed: 'Failed to fetch settings'
