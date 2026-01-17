@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -124,6 +125,16 @@ func (h *SftpHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Resolve absolute path for frontend breadcrumbs
+	realPath, err := sftpClient.RealPath(path)
+	if err != nil {
+		// Log error but continue with relative path? Or strict error?
+		// Fallback to path if realpath fails (unlikely if ReadDir succeeded)
+		realPath = path
+	}
+	// For Windows SFTP servers, ensure forward slashes
+	realPath = filepath.ToSlash(realPath)
+
 	var result []FileInfo
 	for _, f := range files {
 		result = append(result, FileInfo{
@@ -135,16 +146,19 @@ func (h *SftpHandler) List(c *gin.Context) {
 		})
 	}
 
-	utils.SuccessResponse(c, http.StatusOK, result)
+	utils.SuccessResponse(c, http.StatusOK, gin.H{
+		"files": result,
+		"cwd":   realPath,
+	})
 }
 
 // Download handles GET /api/sftp/download/:hostId?path=...
 func (h *SftpHandler) Download(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	hostID := c.Param("hostId")
-	path := c.Query("path")
+	targetPath := c.Query("path")
 
-	if path == "" {
+	if targetPath == "" {
 		utils.ErrorResponse(c, http.StatusBadRequest, "path is required")
 		return
 	}
@@ -157,7 +171,7 @@ func (h *SftpHandler) Download(c *gin.Context) {
 	defer sftpClient.Close()
 	defer sshClient.Close()
 
-	file, err := sftpClient.Open(path)
+	file, err := sftpClient.Open(targetPath)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to open file: "+err.Error())
 		return
@@ -170,7 +184,12 @@ func (h *SftpHandler) Download(c *gin.Context) {
 		return
 	}
 
-	c.Header("Content-Disposition", "attachment; filename="+filepath.Base(path))
+	if stat.IsDir() {
+		utils.ErrorResponse(c, http.StatusBadRequest, "cannot download a directory")
+		return
+	}
+
+	c.Header("Content-Disposition", "attachment; filename="+path.Base(targetPath))
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Length", fmt.Sprintf("%d", stat.Size()))
 
@@ -277,4 +296,197 @@ func (h *SftpHandler) Delete(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "deleted successfully"})
+}
+
+// Rename handles POST /api/sftp/rename/:hostId
+func (h *SftpHandler) Rename(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	hostID := c.Param("hostId")
+
+	var req struct {
+		OldPath string `json:"old_path" binding:"required"`
+		NewPath string `json:"new_path" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	sftpClient, sshClient, err := h.getSftpClient(userID, hostID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer sftpClient.Close()
+	defer sshClient.Close()
+
+	if err := sftpClient.Rename(req.OldPath, req.NewPath); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to rename: "+err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "renamed successfully"})
+}
+
+// Paste handles POST /api/sftp/paste/:hostId
+func (h *SftpHandler) Paste(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	hostID := c.Param("hostId")
+
+	var req struct {
+		Source string `json:"source" binding:"required"`
+		Dest   string `json:"dest" binding:"required"`
+		Type   string `json:"type" binding:"required,oneof=cut copy"` // cut or copy
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	sftpClient, sshClient, err := h.getSftpClient(userID, hostID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer sftpClient.Close()
+	defer sshClient.Close()
+
+	// Calculate new path
+	fileName := path.Base(req.Source)
+	newPath := filepath.ToSlash(filepath.Join(req.Dest, fileName))
+
+	if req.Source == newPath {
+		utils.ErrorResponse(c, http.StatusBadRequest, "cannot paste into same location")
+		return
+	}
+
+	if req.Type == "cut" {
+		// Move is simple rename
+		if err := sftpClient.Rename(req.Source, newPath); err != nil {
+			utils.ErrorResponse(c, http.StatusInternalServerError, "failed to move: "+err.Error())
+			return
+		}
+	} else {
+		// Copy is recursive
+		if err := h.copyRecursive(sftpClient, req.Source, newPath); err != nil {
+			utils.ErrorResponse(c, http.StatusInternalServerError, "failed to copy: "+err.Error())
+			return
+		}
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "pasted successfully"})
+}
+
+func (h *SftpHandler) copyRecursive(client *sftp.Client, src, dst string) error {
+	stat, err := client.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if stat.IsDir() {
+		// Create dest dir
+		if err := client.MkdirAll(dst); err != nil {
+			// If exists, it's fine
+			if _, err := client.Stat(dst); err != nil {
+				return err
+			}
+		}
+
+		entries, err := client.ReadDir(src)
+		if err != nil {
+			return err
+		}
+
+		for _, entry := range entries {
+			srcPath := filepath.ToSlash(filepath.Join(src, entry.Name()))
+			dstPath := filepath.ToSlash(filepath.Join(dst, entry.Name()))
+			if err := h.copyRecursive(client, srcPath, dstPath); err != nil {
+				return err
+			}
+		}
+	} else {
+		// Copy file
+		srcFile, err := client.Open(src)
+		if err != nil {
+			return err
+		}
+		defer srcFile.Close()
+
+		dstFile, err := client.Create(dst)
+		if err != nil {
+			return err
+		}
+		defer dstFile.Close()
+
+		if _, err := srcFile.WriteTo(dstFile); err != nil {
+			return err
+		}
+		// Preserve mode
+		client.Chmod(dst, stat.Mode())
+	}
+	return nil
+}
+
+// Mkdir handles POST /api/sftp/mkdir/:hostId
+func (h *SftpHandler) Mkdir(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	hostID := c.Param("hostId")
+
+	var req struct {
+		Path string `json:"path" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	sftpClient, sshClient, err := h.getSftpClient(userID, hostID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer sftpClient.Close()
+	defer sshClient.Close()
+
+	if err := sftpClient.Mkdir(req.Path); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to create directory: "+err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "directory created successfully"})
+}
+
+// CreateFile handles POST /api/sftp/create/:hostId
+func (h *SftpHandler) CreateFile(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	hostID := c.Param("hostId")
+
+	var req struct {
+		Path string `json:"path" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	sftpClient, sshClient, err := h.getSftpClient(userID, hostID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer sftpClient.Close()
+	defer sshClient.Close()
+
+	file, err := sftpClient.Create(req.Path)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to create file: "+err.Error())
+		return
+	}
+	file.Close()
+
+	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "file created successfully"})
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -122,6 +123,10 @@ func main() {
 		protected.GET("/sftp/download/:hostId", sftpHandler.Download)
 		protected.POST("/sftp/upload/:hostId", sftpHandler.Upload)
 		protected.DELETE("/sftp/delete/:hostId", sftpHandler.Delete)
+		protected.POST("/sftp/rename/:hostId", sftpHandler.Rename)
+		protected.POST("/sftp/paste/:hostId", sftpHandler.Paste)
+		protected.POST("/sftp/mkdir/:hostId", sftpHandler.Mkdir)
+		protected.POST("/sftp/create/:hostId", sftpHandler.CreateFile)
 
 		// Connection log routes
 		logHandler := handlers.NewConnectionLogHandler(db)
@@ -193,8 +198,20 @@ func main() {
 
 	// Start server
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
-	log.Printf("Starting TermiScope server on %s", addr)
+	localIP := getLocalIP()
+	log.Printf("Starting TermiScope server on %s (http://%s:%d)", addr, localIP, cfg.Server.Port)
 	if err := router.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+// getLocalIP returns the non-loopback local IP of the host
+func getLocalIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return "127.0.0.1"
+	}
+	defer conn.Close()
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP.String()
 }

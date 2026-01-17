@@ -7,6 +7,7 @@ import App from './App.vue'
 
 import 'ant-design-vue/dist/reset.css'
 import './style.css'
+import './assets/fonts.css'
 
 const app = createApp(App)
 const pinia = createPinia()

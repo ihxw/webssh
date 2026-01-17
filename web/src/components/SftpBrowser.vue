@@ -1,15 +1,30 @@
 <template>
   <div class="sftp-browser">
     <div class="browser-header">
-      <a-breadcrumb size="small">
-        <a-breadcrumb-item v-for="(part, index) in pathParts" :key="index">
-          <a @click="navigateTo(index)">{{ part || '/' }}</a>
-        </a-breadcrumb-item>
-      </a-breadcrumb>
       <div class="header-actions">
         <a-button size="small" @click="refresh">
           <template #icon><ReloadOutlined /></template>
         </a-button>
+        <a-button size="small" :disabled="!clipboard.source" @click="paste">
+          <template #icon><SnippetsOutlined /></template>
+          Paste
+        </a-button>
+        <a-dropdown>
+            <a-button size="small">
+                <template #icon><PlusOutlined /></template>
+                New
+            </a-button>
+            <template #overlay>
+                <a-menu>
+                    <a-menu-item key="folder" @click="openCreate('folder')">
+                        <FolderAddOutlined /> New Folder
+                    </a-menu-item>
+                    <a-menu-item key="file" @click="openCreate('file')">
+                        <FileAddOutlined /> New File
+                    </a-menu-item>
+                </a-menu>
+            </template>
+        </a-dropdown>
         <a-upload
           :custom-request="handleUpload"
           :show-upload-list="false"
@@ -21,10 +36,16 @@
           </a-button>
         </a-upload>
       </div>
+      <a-breadcrumb size="small" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+        <a-breadcrumb-item v-for="(part, index) in pathParts" :key="index">
+          <a @click="navigateTo(index)">{{ part || '/' }}</a>
+        </a-breadcrumb-item>
+      </a-breadcrumb>
     </div>
 
-    <div class="browser-content" v-loading="loading">
+    <div class="browser-content">
       <a-table
+        :loading="loading"
         :columns="columns"
         :data-source="files"
         :pagination="false"
@@ -58,16 +79,51 @@
                   <template #icon><DeleteOutlined /></template>
                 </a-button>
               </a-popconfirm>
+              <a-dropdown>
+                <a-button size="small" type="text">
+                  <template #icon><MoreOutlined /></template>
+                </a-button>
+                <template #overlay>
+                    <a-menu>
+                        <a-menu-item key="rename" @click="openRename(record)">
+                            <EditOutlined /> Rename
+                        </a-menu-item>
+                        <a-menu-divider />
+                        <a-menu-item key="cut" @click="cut(record.name)">
+                            <ScissorOutlined /> Cut
+                        </a-menu-item>
+                        <a-menu-item key="copy" @click="copy(record.name)">
+                            <CopyOutlined /> Copy
+                        </a-menu-item>
+                    </a-menu>
+                </template>
+              </a-dropdown>
             </a-space>
           </template>
         </template>
       </a-table>
     </div>
+
+    <a-modal
+      v-model:open="renameVisible"
+      title="Rename"
+      @ok="handleRename"
+    >
+      <a-input v-model:value="renameName" placeholder="New name" />
+    </a-modal>
+
+    <a-modal
+      v-model:open="createVisible"
+      :title="createType === 'folder' ? 'New Folder' : 'New File'"
+      @ok="handleCreate"
+    >
+      <a-input v-model:value="createName" :placeholder="createType === 'folder' ? 'Folder name' : 'File name'" />
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, h } from 'vue'
+import { ref, computed, onMounted, watch, h, reactive } from 'vue'
 import { message, notification, Progress } from 'ant-design-vue'
 import { 
   FolderFilled, 
@@ -75,9 +131,17 @@ import {
   ReloadOutlined, 
   UploadOutlined, 
   DownloadOutlined, 
-  DeleteOutlined 
+  DeleteOutlined,
+  EditOutlined,
+  ScissorOutlined,
+  CopyOutlined,
+  SnippetsOutlined,
+  MoreOutlined,
+  PlusOutlined,
+  FolderAddOutlined,
+  FileAddOutlined
 } from '@ant-design/icons-vue'
-import { listFiles, uploadFile, downloadFile, deleteFile } from '../api/sftp'
+import { listFiles, uploadFile, downloadFile, deleteFile, renameFile, pasteFile, createDirectory, createFile } from '../api/sftp'
 
 const props = defineProps({
   hostId: {
@@ -87,23 +151,50 @@ const props = defineProps({
   visible: {
     type: Boolean,
     default: false
+  },
+  fontSize: {
+    type: [Number, String],
+    default: 14
+  },
+  fontFamily: {
+    type: String,
+    default: "'Courier New', monospace"
   }
 })
 
 const currentPath = ref('.')
 const files = ref([])
 const loading = ref(false)
+const clipboard = reactive({
+    source: null,
+    type: null // 'cut' or 'copy'
+})
+const renameVisible = ref(false)
+const renameName = ref('')
+const renamingFile = ref(null)
+
+const createVisible = ref(false)
+const createType = ref('folder') // 'folder' or 'file'
+const createName = ref('')
 
 const pathParts = computed(() => {
   if (currentPath.value === '.') return ['']
+  // Handle root directory
+  if (currentPath.value === '/') return ['']
+  
   const parts = currentPath.value.split('/').filter(p => p !== '')
+  // If absolute path (starts with /), the split logic removes the empty string at start (filter).
+  // We add '' at the beginning to represent the Root breadcrumb item.
+  // If path is '/home', parts=['home']. returns ['', 'home'].
+  // If path is 'home' (relative), parts=['home']. returns ['', 'home'] (index 0 is relative root?)
+  // Actually if we receive absolute path, logic is consistent.
   return ['', ...parts]
 })
 
 const columns = [
   { title: 'Name', key: 'name', sorter: (a, b) => a.name.localeCompare(b.name) },
-  { title: 'Size', key: 'size', width: 100, sorter: (a, b) => a.size - b.size },
-  { title: 'Action', key: 'action', width: 80 }
+  { title: 'Size', key: 'size', align: 'right', sorter: (a, b) => a.size - b.size },
+  { title: 'Action', key: 'action', width: 80, align: 'center' }
 ]
 
 const loadFiles = async () => {
@@ -111,7 +202,18 @@ const loadFiles = async () => {
   loading.value = true
   try {
     const data = await listFiles(props.hostId, currentPath.value)
-    files.value = data || []
+    // Handle new response format { files: [], cwd: '/...' }
+    if (data && data.files) {
+        files.value = data.files
+        if (data.cwd) {
+            currentPath.value = data.cwd
+        }
+    } else if (Array.isArray(data)) {
+        // Fallback for old API response (if cached or something)
+        files.value = data
+    } else {
+        files.value = []
+    }
   } catch (error) {
     console.error('Failed to list files:', error)
   } finally {
@@ -119,9 +221,13 @@ const loadFiles = async () => {
   }
 }
 
-const refresh = () => loadFiles()
+const refresh = () => {
+  if (loading.value) return
+  loadFiles()
+}
 
 const enterDir = (name) => {
+  if (loading.value) return
   if (currentPath.value === '.') {
     currentPath.value = name
   } else {
@@ -133,11 +239,35 @@ const enterDir = (name) => {
 }
 
 const navigateTo = (index) => {
+  if (loading.value) return
+  
   if (index === 0) {
-    currentPath.value = '.'
+    // If absolute path (starts with /), index 0 is Root.
+    if (currentPath.value.startsWith('/')) {
+        currentPath.value = '/'
+    } else {
+        // Relative logic
+        currentPath.value = '.'
+    }
   } else {
-    const parts = pathParts.value.slice(1, index + 1)
-    currentPath.value = parts.join('/')
+    // Reconstruct path from parts
+    const parts = pathParts.value.slice(0, index + 1)
+    
+    // If absolute, parts[0] is ''. parts.join('/') -> '/home/...'
+    let newPath = parts.join('/')
+    if (newPath === '') newPath = '/' // Handle root edge case
+    
+    // If relative, parts[0] is also '' (added in computed). 
+    // Wait, relative path 'foo/bar'. pathParts=['', 'foo', 'bar'].
+    // index 1 ('foo'). slice(0, 2) -> ['', 'foo']. join('/') -> '/foo'.
+    // This turns relative into absolute logic?
+    // If currentPath was '.', we return [''].
+    
+    // If we are in relative mode, maybe we strictly shouldn't show leading slash?
+    // But backend now returns absolute 'cwd' always. 
+    // So we will flip to absolute mode immediately after first load.
+    // So 'join' works fine.
+    currentPath.value = newPath
   }
   loadFiles()
 }
@@ -260,6 +390,80 @@ const remove = async (name) => {
   }
 }
 
+const cut = (name) => {
+    const fullPath = currentPath.value === '.' ? name : `${currentPath.value}/${name}`
+    clipboard.source = fullPath
+    clipboard.type = 'cut'
+    message.info(`Cut ${name}`)
+}
+
+const copy = (name) => {
+    const fullPath = currentPath.value === '.' ? name : `${currentPath.value}/${name}`
+    clipboard.source = fullPath
+    clipboard.type = 'copy'
+    message.info(`Copied ${name}`)
+}
+
+const paste = async () => {
+    if (!clipboard.source) return
+    try {
+        await pasteFile(props.hostId, clipboard.source, currentPath.value, clipboard.type)
+        message.success('Pasted successfully')
+        loadFiles()
+        if (clipboard.type === 'cut') {
+            clipboard.source = null
+            clipboard.type = null
+        }
+    } catch (error) {
+        message.error('Failed to paste: ' + (error.response?.data?.error || error.message))
+    }
+}
+
+const openRename = (record) => {
+    renamingFile.value = record
+    renameName.value = record.name
+    renameVisible.value = true
+}
+
+const handleRename = async () => {
+    if (!renameName.value) return
+    const oldPath = currentPath.value === '.' ? renamingFile.value.name : `${currentPath.value}/${renamingFile.value.name}`
+    const newPath = currentPath.value === '.' ? renameName.value : `${currentPath.value}/${renameName.value}`
+    
+    try {
+        await renameFile(props.hostId, oldPath, newPath)
+        message.success('Renamed successfully')
+        renameVisible.value = false
+        loadFiles()
+    } catch (error) {
+        message.error('Failed to rename: ' + (error.response?.data?.error || error.message))
+    }
+}
+
+const openCreate = (type) => {
+    createType.value = type
+    createName.value = ''
+    createVisible.value = true
+}
+
+const handleCreate = async () => {
+    if (!createName.value) return
+    const fullPath = currentPath.value === '.' ? createName.value : `${currentPath.value}/${createName.value}`
+    
+    try {
+        if (createType.value === 'folder') {
+            await createDirectory(props.hostId, fullPath)
+        } else {
+            await createFile(props.hostId, fullPath)
+        }
+        message.success(`Created ${createType.value} successfully`)
+        createVisible.value = false
+        loadFiles()
+    } catch (error) {
+        message.error(`Failed to create ${createType.value}: ` + (error.response?.data?.error || error.message))
+    }
+}
+
 const formatSize = (bytes) => {
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -290,10 +494,11 @@ onMounted(() => {
 
 .browser-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   margin-bottom: 8px;
   padding: 4px 0;
+  gap: 16px;
 }
 
 .header-actions {
@@ -303,10 +508,20 @@ onMounted(() => {
 
 .browser-content {
   flex: 1;
-  overflow: auto;
+  overflow: hidden; /* Let table handle scrolling */
 }
 
 :deep(.ant-table-cell) {
   padding: 4px 8px !important;
+  font-family: v-bind("props.fontFamily") !important;
+  font-size: v-bind("props.fontSize + 'px'") !important;
+}
+
+/* Force hide horizontal scrollbar */
+:deep(.ant-table-body) {
+  overflow-x: hidden !important;
+}
+:deep(.ant-table-content) {
+  overflow-x: hidden !important;
 }
 </style>

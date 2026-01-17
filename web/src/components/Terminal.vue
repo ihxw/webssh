@@ -8,7 +8,7 @@
     overflow: 'hidden'
   }">
     <div ref="terminalRef" class="terminal-container" :style="{ 
-      background: themeStore.isDark ? '#1e1e1e' : '#ffffff',
+      background: containerBackground,
       flex: 1,
       overflow: 'hidden'
     }"></div>
@@ -36,6 +36,43 @@
             Disconnect
           </a-button>
         </a-space>
+        <a-divider type="vertical" class="status-divider" :style="{ background: themeStore.isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)' }" />
+        
+        <!-- Font Settings -->
+        <a-popover trigger="click" placement="topRight" overlayClassName="terminal-settings-popover">
+          <template #content>
+            <div style="width: 280px; padding: 4px;">
+              <div style="margin-bottom: 12px">
+                <div style="margin-bottom: 4px; font-size: 12px; color: #888">Font Family</div>
+                <a-select v-model:value="fontSettings.family" style="width: 100%" size="small" @change="updateFont">
+                  <a-select-option value="'Alibaba PuHuiTi', monospace">Alibaba PuHuiTi</a-select-option>
+                  <a-select-option value="'Courier New', monospace">Courier New</a-select-option>
+                  <a-select-option value="'Consolas', monospace">Consolas</a-select-option>
+                  <a-select-option value="'Fira Code', monospace">Fira Code</a-select-option>
+                  <a-select-option value="'JetBrains Mono', monospace">JetBrains Mono</a-select-option>
+                  <a-select-option value="'Source Code Pro', monospace">Source Code Pro</a-select-option>
+                  <a-select-option value="'Menlo', 'Monaco', monospace">Menlo / Monaco</a-select-option>
+                </a-select>
+              </div>
+              <div>
+                <div style="margin-bottom: 4px; font-size: 12px; color: #888">Font Size ({{ fontSettings.size }}px)</div>
+                <a-row :gutter="8">
+                  <a-col :span="16">
+                     <a-slider v-model:value="fontSettings.size" :min="10" :max="32" @change="updateFont" />
+                  </a-col>
+                  <a-col :span="8">
+                     <a-input-number v-model:value="fontSettings.size" :min="10" :max="32" size="small" @change="updateFont" style="width: 100%" />
+                  </a-col>
+                </a-row>
+              </div>
+            </div>
+          </template>
+          <a-button class="status-btn" :class="{ 'light-mode': !themeStore.isDark }" size="small" type="text">
+            <template #icon><FontSizeOutlined /></template>
+            Font
+          </a-button>
+        </a-popover>
+
         <a-divider type="vertical" class="status-divider" :style="{ background: themeStore.isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)' }" />
         <a-button class="status-btn" :class="{ 'light-mode': !themeStore.isDark }" size="small" type="text" @click="showSftp = true" :disabled="connectionStatus !== 'Connected'">
           <template #icon><FolderOpenOutlined /></template>
@@ -67,21 +104,26 @@
       v-model:open="showSftp"
       title="File Explorer"
       placement="right"
-      :width="400"
+      width="80%"
       :body-style="{ padding: '8px' }"
     >
-      <SftpBrowser :host-id="hostId" :visible="showSftp" />
+      <SftpBrowser 
+        :host-id="hostId" 
+        :visible="showSftp" 
+        :font-size="fontSettings.size"
+        :font-family="fontSettings.family"
+      />
     </a-drawer>
   </div>
 </template>
 
 <script setup>
-import { ref, shallowRef, onMounted, onUnmounted, onActivated, nextTick, watch } from 'vue'
+import { ref, shallowRef, reactive, onMounted, onUnmounted, onActivated, nextTick, watch } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { WebLinksAddon } from 'xterm-addon-web-links'
 import { message, Modal } from 'ant-design-vue'
-import { ReloadOutlined, DisconnectOutlined, FolderOpenOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, DisconnectOutlined, FolderOpenOutlined, ThunderboltOutlined, FontSizeOutlined } from '@ant-design/icons-vue'
 import { getWSTicket } from '../api/auth'
 import { listCommandTemplates } from '../api/command'
 import { updateHostFingerprint } from '../api/ssh'
@@ -119,6 +161,29 @@ const showSftp = ref(false)
 const commandTemplates = ref([])
 
 const statusColor = ref('processing')
+const containerBackground = ref(themeStore.isDark ? '#1e1e1e' : '#ffffff')
+
+// Font Settings
+const fontSettings = reactive({
+  size: parseInt(localStorage.getItem('termScope_fontSize')) || 14,
+  family: localStorage.getItem('termScope_fontFamily') || "'Courier New', monospace"
+})
+
+const updateFont = () => {
+  if (terminal.value) {
+    terminal.value.options.fontSize = fontSettings.size
+    terminal.value.options.fontFamily = fontSettings.family
+    
+    // Persist
+    localStorage.setItem('termScope_fontSize', fontSettings.size)
+    localStorage.setItem('termScope_fontFamily', fontSettings.family)
+    
+    // Refit after resize
+    nextTick(() => {
+      handleResize()
+    })
+  }
+}
 
 watch([() => themeStore.isDark, () => themeStore.terminalTheme], ([isDark, terminalTheme]) => {
   if (terminal.value) {
@@ -143,6 +208,13 @@ const updateTerminalTheme = (isDark, terminalTheme = null) => {
   }
 
   terminal.value.options.theme = themeConfig
+  
+  // Sync container background with terminal background to remove visual gaps
+  if (themeConfig.background) {
+    containerBackground.value = themeConfig.background
+  } else {
+    containerBackground.value = isDark ? '#1e1e1e' : '#ffffff'
+  }
 }
 
 const handleQuickCommand = ({ key }) => {
@@ -164,8 +236,8 @@ const initTerminal = () => {
   // Create terminal instance
   terminal.value = new Terminal({
     cursorBlink: true,
-    fontSize: 14,
-    fontFamily: 'Courier New, monospace',
+    fontSize: fontSettings.size,
+    fontFamily: fontSettings.family,
     theme: {}, // Will be set by updateTerminalTheme
     allowProposedApi: true,
     logLevel: 'info'
@@ -400,7 +472,7 @@ const cleanup = () => {
 }
 
 :deep(.xterm) {
-  padding: 4px;
+  padding: 0;
 }
 
 .status-btn {

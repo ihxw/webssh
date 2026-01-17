@@ -38,3 +38,19 @@ export const uploadFile = async (hostId, path, file, onProgress) => {
 export const deleteFile = async (hostId, path) => {
     return await api.delete(`/sftp/delete/${hostId}`, { params: { path } })
 }
+
+export const renameFile = async (hostId, oldPath, newPath) => {
+    return await api.post(`/sftp/rename/${hostId}`, { old_path: oldPath, new_path: newPath })
+}
+
+export const pasteFile = async (hostId, source, dest, type) => {
+    return await api.post(`/sftp/paste/${hostId}`, { source, dest, type })
+}
+
+export const createDirectory = async (hostId, path) => {
+    return await api.post(`/sftp/mkdir/${hostId}`, { path })
+}
+
+export const createFile = async (hostId, path) => {
+    return await api.post(`/sftp/create/${hostId}`, { path })
+}
