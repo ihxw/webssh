@@ -94,6 +94,12 @@
                             <span style="color: #1890ff"><ArrowUpOutlined/> {{formatSpeed(record.tx_rate || 0)}}</span>
                         </div>
                     </template>
+                    <template v-if="column.key === 'ip'">
+                        <div v-for="ip in record.ips" :key="ip">{{ ip }}</div>
+                    </template>
+                    <template v-if="column.key === 'mac'">
+                        <span style="font-family: monospace">{{ record.mac }}</span>
+                    </template>
                     <template v-else-if="column.key === 'total'">
                          <div style="white-space: nowrap">
                             <div>Rx: {{ formatBytes(record.rx) }}</div>
@@ -206,6 +212,8 @@ const usageStatus = computed(() => {
 
 const columns = computed(() => [
     { title: t('network.interfaceName'), key: 'name', dataIndex: 'name' },
+    { title: 'IP Address', key: 'ip' },
+    { title: 'MAC Address', key: 'mac' },
     { title: t('network.realTimeSpeed'), key: 'speed' },
     { title: t('network.totalTraffic'), key: 'total' },
 ])

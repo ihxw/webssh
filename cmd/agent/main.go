@@ -20,9 +20,11 @@ import (
 
 // InterfaceData holds per-interface metrics
 type InterfaceData struct {
-	Name string `json:"name"`
-	Rx   uint64 `json:"rx"`
-	Tx   uint64 `json:"tx"`
+	Name string   `json:"name"`
+	Rx   uint64   `json:"rx"`
+	Tx   uint64   `json:"tx"`
+	IPs  []string `json:"ips"`
+	Mac  string   `json:"mac"`
 }
 
 // MetricData matches the termiscope backend struct
@@ -134,6 +136,13 @@ func collectMetrics() MetricData {
 		data.NetTx = 0
 		data.Interfaces = []InterfaceData{}
 
+		// Get Static Info (IPs, MAC)
+		interfaces, _ := net.Interfaces()
+		interfaceMap := make(map[string]net.InterfaceStat)
+		for _, iface := range interfaces {
+			interfaceMap[iface.Name] = iface
+		}
+
 		for _, nic := range counters {
 			// Skip loopback or pseudo interfaces if desired, but gopsutil usually gives real ones
 			// Simulating the previous logic of skipping 'lo'
@@ -143,10 +152,23 @@ func collectMetrics() MetricData {
 
 			data.NetRx += nic.BytesRecv
 			data.NetTx += nic.BytesSent
+
+			// Find static info
+			var ips []string
+			var mac string
+			if static, ok := interfaceMap[nic.Name]; ok {
+				mac = static.HardwareAddr
+				for _, addr := range static.Addrs {
+					ips = append(ips, addr.Addr)
+				}
+			}
+
 			data.Interfaces = append(data.Interfaces, InterfaceData{
 				Name: nic.Name,
 				Rx:   nic.BytesRecv,
 				Tx:   nic.BytesSent,
+				IPs:  ips,
+				Mac:  mac,
 			})
 		}
 	}

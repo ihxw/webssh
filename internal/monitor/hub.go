@@ -11,10 +11,13 @@ import (
 )
 
 // InterfaceData holds per-interface metrics
+// InterfaceData holds per-interface metrics
 type InterfaceData struct {
-	Name string `json:"name"`
-	Rx   uint64 `json:"rx"`
-	Tx   uint64 `json:"tx"`
+	Name string   `json:"name"`
+	Rx   uint64   `json:"rx"`
+	Tx   uint64   `json:"tx"`
+	IPs  []string `json:"ips"`
+	Mac  string   `json:"mac"`
 	// Derived rates
 	RxRate uint64 `json:"rx_rate"`
 	TxRate uint64 `json:"tx_rate"`

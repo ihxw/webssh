@@ -30,7 +30,7 @@
           <a-input
             v-model:value="formState.username"
             :placeholder="t('auth.usernamePlaceholder')"
-            size="small"
+            size="middle"
           >
             <template #prefix>
               <UserOutlined />
@@ -46,7 +46,7 @@
           <a-input-password
             v-model:value="formState.password"
             :placeholder="t('auth.passwordPlaceholder')"
-            size="small"
+            size="middle"
           >
             <template #prefix>
               <LockOutlined />
@@ -64,7 +64,7 @@
           <a-button
             type="primary"
             html-type="submit"
-            size="small"
+            size="middle"
             block
             :loading="loading"
           >
