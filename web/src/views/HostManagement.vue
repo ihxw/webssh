@@ -54,16 +54,15 @@
           </template>
           <template v-if="column.key === 'action'">
             <a-space>
-              <a-popconfirm
+              <a-button 
                 v-if="!record.monitor_enabled"
-                title="Deploy monitor agent to this host?"
-                @confirm="handleDeployMonitor(record)"
+                size="small" 
+                :loading="monitorLoading[record.id]"
+                @click="openDeployModal(record)"
               >
-                 <a-button size="small" :loading="monitorLoading[record.id]">
-                   <DashboardOutlined />
-                   Monitor
-                 </a-button>
-              </a-popconfirm>
+                <DashboardOutlined />
+                Monitor
+              </a-button>
               <a-popconfirm
                 v-else
                 title="Disable monitoring?"
@@ -149,6 +148,22 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <!-- Deploy Monitor Modal -->
+    <a-modal
+      v-model:open="deployVisible"
+      title="Deploy Monitor Agent"
+      @ok="handleDeploy"
+      :confirmLoading="deploying"
+    >
+      <p>Are you sure you want to deploy the monitor agent to <b>{{ deployHost?.name }}</b>?</p>
+      <a-checkbox v-model:checked="deployInsecure">
+        Skip SSL Certificate Verification (Insecure)
+      </a-checkbox>
+      <p style="margin-top: 8px; font-size: 12px; color: #faad14;" v-if="deployInsecure">
+        Warning: Skipping SSL verification may expose the connection to MITM attacks. Use only for trusted networks or self-signed certificates.
+      </p>
+    </a-modal>
   </div>
 </template>
 
@@ -179,6 +194,11 @@ const showModal = ref(false)
 const saving = ref(false)
 const editingHost = ref(null)
 
+const deployVisible = ref(false)
+const deployInsecure = ref(false)
+const deployHost = ref(null)
+const deploying = ref(false)
+
 const hostForm = ref({
   name: '',
   host: '',
@@ -204,18 +224,28 @@ const columns = computed(() => [
 
 const monitorLoading = ref({})
 
-const handleDeployMonitor = async (host) => {
-  monitorLoading.value[host.id] = true
-  try {
-    await deployMonitor(host.id)
-    message.success('Monitor agent deployed successfully')
-    // Update local state without reload
-    host.monitor_enabled = true
-  } catch (error) {
-    message.error('Failed to deploy monitor: ' + (error.response?.data?.error || error.message))
-  } finally {
-    monitorLoading.value[host.id] = false
-  }
+const openDeployModal = (host) => {
+    deployHost.value = host
+    deployInsecure.value = false
+    deployVisible.value = true
+}
+
+const handleDeploy = async () => {
+    if (!deployHost.value) return
+    deploying.value = true
+    monitorLoading.value[deployHost.value.id] = true
+    
+    try {
+        await deployMonitor(deployHost.value.id, deployInsecure.value)
+        message.success('Monitor agent deployed successfully')
+        deployHost.value.monitor_enabled = true
+        deployVisible.value = false
+    } catch (error) {
+        message.error('Failed to deploy monitor: ' + (error.response?.data?.error || error.message))
+    } finally {
+        deploying.value = false
+        monitorLoading.value[deployHost.value.id] = false
+    }
 }
 
 const handleStopMonitor = async (host) => {

@@ -25,8 +25,8 @@ export const testConnection = async (id) => {
     return await api.post(`/ssh-hosts/${id}/test`)
 }
 
-export const deployMonitor = async (id) => {
-    return await api.post(`/ssh-hosts/${id}/monitor/deploy`)
+export const deployMonitor = async (id, insecure = false) => {
+    return await api.post(`/ssh-hosts/${id}/monitor/deploy`, { insecure })
 }
 
 export const stopMonitor = async (id) => {

@@ -329,9 +329,18 @@ func (h *MonitorHandler) Stream(c *gin.Context) {
 	}
 }
 
-// Deploy installs the agent
 func (h *MonitorHandler) Deploy(c *gin.Context) {
 	id := c.Param("id")
+
+	// Parse optional insecure flag
+	var req struct {
+		Insecure bool `json:"insecure"`
+	}
+	// We use ShouldBindBodyWith or just ShouldBindJSON.
+	// Note: Since this is a POST, we expect JSON body, but params are in URL too.
+	// We bind JSON for the flag.
+	c.ShouldBindJSON(&req)
+
 	var host models.SSHHost
 	if err := h.DB.First(&host, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Host not found"})
@@ -488,19 +497,24 @@ func (h *MonitorHandler) Deploy(c *gin.Context) {
 	session.Close()
 
 	// 3. Create Systemd Service
+	execCmd := fmt.Sprintf("%s -server \"%s\" -secret \"%s\" -id %d", remoteBinaryPath, serverURL, secret, host.ID)
+	if req.Insecure {
+		execCmd += " -insecure"
+	}
+
 	serviceContent := fmt.Sprintf(`[Unit]
 Description=TermiScope Monitor Agent
 After=network.target
 
 [Service]
-ExecStart=%s -server "%s" -secret "%s" -id %d
+ExecStart=%s
 Restart=always
 User=root
 WorkingDirectory=/opt/termiscope/agent
 
 [Install]
 WantedBy=multi-user.target
-`, remoteBinaryPath, serverURL, secret, host.ID)
+`, execCmd)
 
 	session, _ = client.NewSession()
 	var serviceReader bytes.Buffer

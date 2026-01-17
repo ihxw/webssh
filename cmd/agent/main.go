@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -53,6 +54,7 @@ func main() {
 	flag.StringVar(&serverURL, "server", "", "Server URL (e.g. http://localhost:8080)")
 	flag.StringVar(&secret, "secret", "", "Monitor Secret")
 	flag.Uint64Var(&hostID, "id", 0, "Host ID")
+	insecure := flag.Bool("insecure", false, "Skip SSL verification")
 	flag.Parse()
 
 	if serverURL == "" || secret == "" || hostID == 0 {
@@ -63,8 +65,14 @@ func main() {
 
 	log.Printf("Agent started for Host %d. Target: %s. OS: %s", hostID, serverURL, cachedOS)
 
+	transport := &http.Transport{}
+	if *insecure {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout:   5 * time.Second,
+		Transport: transport,
 	}
 
 	for {
