@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"encoding/json"
-	"log"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -221,18 +220,24 @@ func (h *Hub) broadcast() {
 	}
 
 	h.clientsMu.RLock()
-	defer h.clientsMu.RUnlock()
-
+	// Collect clients to remove to avoid modifying map while iterating/holding RLock
+	var toRemove []*websocket.Conn
 	for client := range h.clients {
 		err := client.WriteMessage(websocket.TextMessage, jsonMsg)
 		if err != nil {
-			log.Printf("Error writing to monitor ws: %v", err)
-			client.Close()
-			delete(h.clients, client) // Note: safe to delete active loop key in Go? No.
-			// Ideally we should collect "to delete" and delete after loop, but RLock prevents modification.
-			// Actually RLock means we can't delete.
-			// Fix: Just log error, let Unregister handle it or handle disconnection gracefully.
-			// For simplicity, we just ignore error here, usually the underlying connection close will trigger read error in the reader loop.
+			// log.Printf("Error writing to monitor ws: %v", err)
+			toRemove = append(toRemove, client)
 		}
+	}
+	h.clientsMu.RUnlock()
+
+	// Remove dead clients
+	if len(toRemove) > 0 {
+		h.clientsMu.Lock()
+		for _, client := range toRemove {
+			client.Close()
+			delete(h.clients, client)
+		}
+		h.clientsMu.Unlock()
 	}
 }
