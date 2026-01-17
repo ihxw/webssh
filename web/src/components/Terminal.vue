@@ -80,10 +80,11 @@ import { ref, shallowRef, onMounted, onUnmounted, onActivated, nextTick, watch }
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { WebLinksAddon } from 'xterm-addon-web-links'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import { ReloadOutlined, DisconnectOutlined, FolderOpenOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
 import { getWSTicket } from '../api/auth'
 import { listCommandTemplates } from '../api/command'
+import { updateHostFingerprint } from '../api/ssh'
 import SftpBrowser from './SftpBrowser.vue'
 import 'xterm/css/xterm.css'
 
@@ -249,8 +250,35 @@ const connectWebSocket = async () => {
         // Only treat as structured message if it's an object with a 'type' field
         if (msg && typeof msg === 'object' && msg.type) {
           if (msg.type === 'error') {
-            terminal.value.writeln(`\r\n\x1b[31mError: ${msg.data}\x1b[0m\r\n`)
-            connectionStatus.value = 'Error'
+            if (msg.code === 'fingerprint_mismatch') {
+              Modal.confirm({
+                title: 'Host Identity Changed',
+                content: h('div', [
+                  h('p', 'The remote host identification has changed!'),
+                  h('p', 'This could mean that someone is eavesdropping on you purely, or that the host key has just changed.'),
+                  h('p', { style: 'font-weight: bold; margin-top: 8px;' }, `New Fingerprint: ${msg.meta.new_fingerprint}`),
+                  h('p', { style: 'margin-top: 8px; color: #faad14;' }, 'Do you want to accept the new fingerprint and connect?')
+                ]),
+                okText: 'Accept & Connect',
+                cancelText: 'Cancel',
+                onOk: async () => {
+                  try {
+                    await updateHostFingerprint(props.hostId, msg.meta.new_fingerprint)
+                    message.success('Fingerprint updated')
+                    reconnect()
+                  } catch (err) {
+                    message.error('Failed to update fingerprint: ' + err.message)
+                  }
+                },
+                onCancel: () => {
+                  terminal.value.writeln('\r\n\x1b[31mConnection cancelled by user.\x1b[0m\r\n')
+                }
+              })
+              connectionStatus.value = 'Error'
+            } else {
+              terminal.value.writeln(`\r\n\x1b[31mError: ${msg.data}\x1b[0m\r\n`)
+              connectionStatus.value = 'Error'
+            }
           } else if (msg.type === 'connected') {
             terminal.value.writeln(`\r\n\x1b[32m${msg.data}\x1b[0m\r\n`)
           }

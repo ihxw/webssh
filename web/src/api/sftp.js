@@ -4,20 +4,33 @@ export const listFiles = async (hostId, path = '.') => {
     return await api.get(`/sftp/list/${hostId}`, { params: { path } })
 }
 
-export const downloadFile = (hostId, path) => {
-    // For download, we use a direct window.open or a hidden link because it's a stream
+export const downloadFile = async (hostId, path, onProgress) => {
     const token = localStorage.getItem('token')
-    const url = `/api/sftp/download/${hostId}?path=${encodeURIComponent(path)}&token=${token}`
-    window.open(url, '_blank')
+    return await api.get(`/sftp/download/${hostId}`, {
+        params: { path, token },
+        responseType: 'blob',
+        onDownloadProgress: (progressEvent) => {
+            if (onProgress) {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                onProgress(percentCompleted)
+            }
+        }
+    })
 }
 
-export const uploadFile = async (hostId, path, file) => {
+export const uploadFile = async (hostId, path, file, onProgress) => {
     const formData = new FormData()
     formData.append('path', path)
     formData.append('file', file)
     return await api.post(`/sftp/upload/${hostId}`, formData, {
         headers: {
             'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+            if (onProgress) {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                onProgress(percentCompleted)
+            }
         }
     })
 }

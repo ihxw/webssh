@@ -32,3 +32,7 @@ export const deployMonitor = async (id) => {
 export const stopMonitor = async (id) => {
     return await api.post(`/ssh-hosts/${id}/monitor/stop`)
 }
+
+export const updateHostFingerprint = async (id, fingerprint) => {
+    return await api.put(`/ssh-hosts/${id}/fingerprint`, { fingerprint })
+}

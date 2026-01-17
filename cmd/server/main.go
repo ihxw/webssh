@@ -109,6 +109,7 @@ func main() {
 		protected.DELETE("/ssh-hosts/:id", sshHostHandler.Delete)
 		protected.GET("/ssh-hosts/:id", sshHostHandler.Get)
 		protected.POST("/ssh-hosts/:id/test", sshHostHandler.TestConnection)
+		protected.PUT("/ssh-hosts/:id/fingerprint", sshHostHandler.UpdateFingerprint)
 
 		// Monitor Management
 		protected.GET("/monitor/stream", monitorHandler.Stream)

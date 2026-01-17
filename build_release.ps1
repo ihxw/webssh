@@ -149,6 +149,9 @@ foreach ($Target in $Targets) {
     New-Item -ItemType Directory -Path $AgentDest | Out-Null
     Copy-Item -Path "$AgentDir/*" -Destination $AgentDest
 
+    # Copy LICENSE
+    Copy-Item -Path (Join-Path $PSScriptRoot "LICENSE") -Destination $OutputDir
+
     # Linux-specific: Copy Install Scripts
     if ($OS -eq "linux") {
         $ScriptDir = Join-Path $PSScriptRoot "scripts"

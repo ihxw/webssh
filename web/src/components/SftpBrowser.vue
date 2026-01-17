@@ -67,8 +67,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { message } from 'ant-design-vue'
+import { ref, computed, onMounted, watch, h } from 'vue'
+import { message, notification, Progress } from 'ant-design-vue'
 import { 
   FolderFilled, 
   FileOutlined, 
@@ -143,19 +143,110 @@ const navigateTo = (index) => {
 }
 
 const handleUpload = async ({ file, onSuccess, onError }) => {
+  const key = `upload-${Date.now()}`
   try {
-    await uploadFile(props.hostId, currentPath.value, file)
-    message.success('Uploaded successfully')
+    notification.open({
+        key,
+        message: 'Uploading...',
+        description: h('div', [
+            h(Progress, { percent: 0, status: 'active', size: 'small' }),
+            h('div', { style: 'margin-top: 8px' }, file.name)
+        ]),
+        duration: 0,
+        placement: 'bottomRight'
+    })
+
+    await uploadFile(props.hostId, currentPath.value, file, (percent) => {
+        notification.open({
+            key,
+            message: 'Uploading...',
+            description: h('div', [
+                h(Progress, { percent: percent, status: 'active', size: 'small' }),
+                h('div', { style: 'margin-top: 8px' }, file.name)
+            ]),
+            duration: 0,
+            placement: 'bottomRight'
+        })
+    })
+    
+    notification.success({
+        key,
+        message: 'Upload Complete',
+        description: `${file.name} uploaded successfully`,
+        duration: 3,
+        placement: 'bottomRight'
+    })
+    
     loadFiles()
     onSuccess()
   } catch (error) {
+    notification.error({
+        key,
+        message: 'Upload Failed',
+        description: error.message || 'Failed to upload file',
+        duration: 4.5,
+        placement: 'bottomRight'
+    })
     onError(error)
   }
 }
 
-const download = (name) => {
+const download = async (name) => {
   const fullPath = currentPath.value === '.' ? name : `${currentPath.value}/${name}`
-  downloadFile(props.hostId, fullPath)
+  const key = `download-${Date.now()}`
+  
+  try {
+     notification.open({
+        key,
+        message: 'Downloading...',
+        description: h('div', [
+            h(Progress, { percent: 0, status: 'active', size: 'small' }),
+            h('div', { style: 'margin-top: 8px' }, name)
+        ]),
+        duration: 0,
+        placement: 'bottomRight'
+    })
+
+    const response = await downloadFile(props.hostId, fullPath, (percent) => {
+         notification.open({
+            key,
+            message: 'Downloading...',
+            description: h('div', [
+                h(Progress, { percent: percent, status: 'active', size: 'small' }),
+                h('div', { style: 'margin-top: 8px' }, name)
+            ]),
+            duration: 0,
+            placement: 'bottomRight'
+        })
+    })
+
+    // Create blobs and trigger downloads
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', name)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    notification.success({
+        key,
+        message: 'Download Complete',
+        description: `${name} downloaded successfully`,
+        duration: 3,
+        placement: 'bottomRight'
+    })
+  } catch (error) {
+      console.error(error)
+      notification.error({
+        key,
+        message: 'Download Failed',
+        description: 'Failed to download file',
+        duration: 4.5,
+        placement: 'bottomRight'
+    })
+  }
 }
 
 const remove = async (name) => {

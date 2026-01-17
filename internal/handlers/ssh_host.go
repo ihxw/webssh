@@ -345,3 +345,33 @@ func (h *SSHHostHandler) TestConnection(c *gin.Context) {
 		"latency": duration.Milliseconds(),
 	})
 }
+
+type UpdateFingerprintRequest struct {
+	Fingerprint string `json:"fingerprint" binding:"required"`
+}
+
+// UpdateFingerprint updates the host fingerprint
+func (h *SSHHostHandler) UpdateFingerprint(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	id := c.Param("id")
+
+	var req UpdateFingerprintRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid request: "+err.Error())
+		return
+	}
+
+	var host models.SSHHost
+	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&host).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "host not found")
+		return
+	}
+
+	host.Fingerprint = req.Fingerprint
+	if err := h.db.Save(&host).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to update fingerprint")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "fingerprint updated successfully"})
+}

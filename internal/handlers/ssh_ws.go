@@ -163,7 +163,25 @@ func (h *SSHWebSocketHandler) HandleWebSocket(c *gin.Context) {
 		connLog.Status = "failed"
 		connLog.ErrorMessage = err.Error()
 		h.db.Save(connLog)
-		writeJSON(gin.H{"type": "error", "data": "Failed to connect (Host Verification Failed): " + err.Error()})
+
+		// Check for host key mismatch
+		if err.Error() == "host key fingerprint mismatch" || (len(err.Error()) > 29 && err.Error()[:29] == "host key fingerprint mismatch") {
+			// Extract the new fingerprint from the error or client
+			// The error message format is "host key fingerprint mismatch: anticipated %s, got %s"
+			// But we can also get it from client.GetFingerprint() because the callback sets it even on error?
+			// Let's check client implementation. The callback sets client.fingerprint = fp BEFORE returning error.
+			newFp := sshClient.GetFingerprint()
+			writeJSON(gin.H{
+				"type": "error",
+				"code": "fingerprint_mismatch",
+				"data": fmt.Sprintf("Host key verification failed. The remote host identification has changed! New fingerprint: %s", newFp),
+				"meta": gin.H{
+					"new_fingerprint": newFp,
+				},
+			})
+		} else {
+			writeJSON(gin.H{"type": "error", "data": "Failed to connect (Host Verification Failed): " + err.Error()})
+		}
 		return
 	}
 
