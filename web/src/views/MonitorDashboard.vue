@@ -104,7 +104,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, h } from 'vue'
+import { ref, onMounted, onUnmounted, computed, h, watch } from 'vue'
 import { useSSHStore } from '../stores/ssh'
 import { ArrowDownOutlined, ArrowUpOutlined, AppleOutlined, WindowsOutlined, DesktopOutlined, LineChartOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
@@ -177,7 +177,86 @@ onMounted(() => {
   connect()
 })
 
-// ... OSIcon ...
+// Mock for OSIcon component
+const OSIcon = (props) => {
+  const os = (props.os || '').toLowerCase()
+  if (os.includes('ubuntu') || os.includes('debian') || os.includes('centos') || os.includes('linux')) return h(DesktopOutlined)
+  if (os.includes('darwin') || os.includes('mac')) return h(AppleOutlined)
+  if (os.includes('win')) return h(WindowsOutlined)
+  return h(DesktopOutlined)
+}
+
+const isOffline = (host) => {
+  const now = Date.now() / 1000
+  return (now - host.last_updated) > 15
+}
+
+const getStatus = (pct) => {
+  if (pct >= 90) return 'exception'
+  if (pct >= 80) return 'active'
+  return 'normal'
+}
+
+const calcPct = (used, total) => {
+  if (!total) return 0
+  return Math.round((used / total) * 100)
+}
+
+const formatPct = (used, total) => calcPct(used, total)
+
+const formatUptime = (seconds) => {
+  const dys = Math.floor(seconds / 86400)
+  const hrs = Math.floor((seconds % 86400) / 3600)
+  const min = Math.floor((seconds % 3600) / 60)
+  if (dys > 0) return `${dys}d ${hrs}h`
+  if (hrs > 0) return `${hrs}h ${min}m`
+  return `${min}m`
+}
+
+const formatBytes = (bytes) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
+const formatSpeed = (bytesPerSec) => {
+  return formatBytes(bytesPerSec) + '/s'
+}
+
+const formatCpu = (val) => {
+  return (val || 0).toFixed(2)
+}
+
+const getTrafficUsagePct = (host) => {
+    if (!host.net_traffic_limit) return 0
+    let measured = 0
+    if (host.net_traffic_counter_mode === 'rx') {
+        measured = host.net_monthly_rx || 0
+    } else if (host.net_traffic_counter_mode === 'tx') {
+        measured = host.net_monthly_tx || 0
+    } else {
+        measured = (host.net_monthly_rx || 0) + (host.net_monthly_tx || 0)
+    }
+    const used = measured + (host.net_traffic_used_adjustment || 0)
+    const pct = Math.round((used / host.net_traffic_limit) * 100)
+    return pct > 100 ? 100 : pct
+}
+
+const formatTrafficUsage = (host) => {
+    if (!host.net_traffic_limit) return ''
+     let measured = 0
+    if (host.net_traffic_counter_mode === 'rx') {
+        measured = host.net_monthly_rx || 0
+    } else if (host.net_traffic_counter_mode === 'tx') {
+        measured = host.net_monthly_tx || 0
+    } else {
+        measured = (host.net_monthly_rx || 0) + (host.net_monthly_tx || 0)
+    }
+    const used = measured + (host.net_traffic_used_adjustment || 0)
+    return formatBytes(used) + ' / ' + formatBytes(host.net_traffic_limit)
+}
 
 const sortedHosts = computed(() => {
     // Sort: Online first, then by ID

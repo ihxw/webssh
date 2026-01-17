@@ -357,7 +357,7 @@ func (h *MonitorHandler) Deploy(c *gin.Context) {
 
 	// Prepare Server URL
 	scheme := "http"
-	if c.Request.TLS != nil {
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
 		scheme = "https"
 	}
 	serverURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
