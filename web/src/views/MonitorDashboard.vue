@@ -128,108 +128,71 @@ const getOsIcon = (os) => {
   return DesktopOutlined
 }
 
+const syncHostsFromStore = () => {
+  const storeHosts = sshStore.hosts.filter(h => h.monitor_enabled)
+  
+  // 1. Add new hosts or update existing static info
+  storeHosts.forEach(sh => {
+    const customId = sh.id
+    const existing = hosts.value.findIndex(h => h.host_id === customId)
+    
+    if (existing !== -1) {
+      // Update static info
+      hosts.value[existing].hostname = sh.host
+      // hosts.value[existing].name = sh.name // Using getHostName helper in template anyway
+    } else {
+      // Add new host with default/empty metrics
+      hosts.value.push({
+        host_id: sh.id,
+        hostname: sh.host,
+        os: '',
+        uptime: 0,
+        cpu: 0,
+        mem_used: 0,
+        mem_total: 0,
+        disk_used: 0,
+        disk_total: 0,
+        net_rx: 0,
+        net_tx: 0,
+        last_updated: 0
+      })
+    }
+  })
+  
+  // 2. Remove hosts that are no longer in store or disabled
+  hosts.value = hosts.value.filter(h => {
+    return storeHosts.find(sh => sh.id === h.host_id)
+  })
+}
+
+// Watch for store changes
+watch(() => sshStore.hosts, () => {
+    syncHostsFromStore()
+}, { deep: true })
+
 onMounted(() => {
-  sshStore.fetchHosts()
+  sshStore.fetchHosts().then(() => {
+      syncHostsFromStore()
+  })
   connect()
 })
-// Mock for OSIcon component
-const OSIcon = (props) => {
-  const os = (props.os || '').toLowerCase()
-  if (os.includes('ubuntu') || os.includes('debian') || os.includes('centos') || os.includes('linux')) return h(DesktopOutlined)
-  if (os.includes('darwin') || os.includes('mac')) return h(AppleOutlined)
-  if (os.includes('win')) return h(WindowsOutlined)
-  return h(DesktopOutlined)
-}
+
+// ... OSIcon ...
 
 const sortedHosts = computed(() => {
-  return [...hosts.value].sort((a, b) => b.host_id - a.host_id)
+    // Sort: Online first, then by ID
+    return [...hosts.value].sort((a, b) => {
+        const aOffline = isOffline(a)
+        const bOffline = isOffline(b)
+        if (aOffline === bOffline) return b.host_id - a.host_id
+        return aOffline ? 1 : -1
+    })
 })
 
-const isOffline = (host) => {
-  const now = Date.now() / 1000
-  return (now - host.last_updated) > 15
-}
-
-const getStatus = (pct) => {
-  if (pct >= 90) return 'exception'
-  if (pct >= 80) return 'active' // Orange-ish in some themes, or use custom color
-  return 'normal' // Blue/Green
-}
-
-const calcPct = (used, total) => {
-  if (!total) return 0
-  return Math.round((used / total) * 100)
-}
-
-const formatPct = (used, total) => calcPct(used, total)
-
-const formatUptime = (seconds) => {
-  const dys = Math.floor(seconds / 86400)
-  const hrs = Math.floor((seconds % 86400) / 3600)
-  const min = Math.floor((seconds % 3600) / 60)
-  if (dys > 0) return `${dys}d ${hrs}h`
-  if (hrs > 0) return `${hrs}h ${min}m`
-  return `${min}m`
-}
-
-const formatBytes = (bytes) => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
-
-const formatSpeed = (bytesPerSec) => {
-  return formatBytes(bytesPerSec) + '/s'
-}
-
-const formatCpu = (val) => {
-  return (val || 0).toFixed(2)
-}
-
-const getTrafficUsagePct = (host) => {
-    if (!host.net_traffic_limit) return 0
-    
-    let measured = 0
-    if (host.net_traffic_counter_mode === 'rx') {
-        measured = host.net_monthly_rx || 0
-    } else if (host.net_traffic_counter_mode === 'tx') {
-        measured = host.net_monthly_tx || 0
-    } else {
-        measured = (host.net_monthly_rx || 0) + (host.net_monthly_tx || 0)
-    }
-    
-    const used = measured + (host.net_traffic_used_adjustment || 0)
-    const pct = Math.round((used / host.net_traffic_limit) * 100)
-    return pct > 100 ? 100 : pct
-}
-
-const formatTrafficUsage = (host) => {
-    if (!host.net_traffic_limit) return ''
-     let measured = 0
-    if (host.net_traffic_counter_mode === 'rx') {
-        measured = host.net_monthly_rx || 0
-    } else if (host.net_traffic_counter_mode === 'tx') {
-        measured = host.net_monthly_tx || 0
-    } else {
-        measured = (host.net_monthly_rx || 0) + (host.net_monthly_tx || 0)
-    }
-    const used = measured + (host.net_traffic_used_adjustment || 0)
-    
-    // Format to GB if limit is in GB
-    return formatBytes(used) + ' / ' + formatBytes(host.net_traffic_limit)
-}
+// ...
 
 const connect = () => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  // Use current auth token if needed, but the backend Stream handler didn't check generic JWT in the WS upgrade 
-  // (It used router group middleware?). Yes, router group has AuthMiddleware. 
-  // Standard Browser WebSocket API doesn't support custom headers easily.
-  // We usually pass token in query param or cookie. 
-  // Note: The backend route /api/monitor/stream requires JWT. 
-  // We need to pass ?token=... or use cookie. 
-  // Let's try to grab token from storage.
   const token = localStorage.getItem('token')
   const wsUrl = `${protocol}//${window.location.host}/api/monitor/stream?token=${token}`
   
@@ -243,12 +206,11 @@ const connect = () => {
     try {
       const msg = JSON.parse(event.data)
       if (msg.type === 'init') {
-        // Calculate rates? Init doesn't have rates usually unless backend sends them
-        hosts.value = msg.data.map(enrichHost)
+        updateHosts(msg.data)
       } else if (msg.type === 'update') {
         updateHosts(msg.data)
       } else if (msg.type === 'remove') {
-        removeHost(msg.data)
+        // removeHost(msg.data)
       }
     } catch (e) {
       console.error(e)
@@ -261,22 +223,18 @@ const connect = () => {
   }
 }
 
-// Store previous state to calculate rates if backend doesn't (Backend partially does, but let's be safe)
-// Actually Backend sends 'net_rx_rate' in struct but logic was "Calculate rates if previous data exists".
-// Let's trust backend sends rates.
-
 const enrichHost = (data) => {
-  // Add derived fields or temporary state if needed
   return data
 }
 
 const updateHosts = (updates) => {
+  if (!updates) return
   updates.forEach(update => {
     const index = hosts.value.findIndex(h => h.host_id === update.host_id)
     if (index !== -1) {
       hosts.value[index] = { ...hosts.value[index], ...update }
     } else {
-      hosts.value.push(enrichHost(update))
+       hosts.value.push(enrichHost(update))
     }
   })
 }
@@ -284,10 +242,6 @@ const updateHosts = (updates) => {
 const removeHost = (hostId) => {
   hosts.value = hosts.value.filter(h => h.host_id !== hostId)
 }
-
-onMounted(() => {
-  connect()
-})
 
 onUnmounted(() => {
   if (socket.value) socket.value.close()
