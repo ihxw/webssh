@@ -61,7 +61,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("ssh.idle_timeout", "30m")
 	viper.SetDefault("ssh.max_connections_per_user", 10)
 	viper.SetDefault("security.login_rate_limit", 20)
-	viper.SetDefault("security.access_expiration", "15m")
+	viper.SetDefault("security.access_expiration", "60m")
 	viper.SetDefault("security.refresh_expiration", "168h") // 7 days
 	viper.SetDefault("log.level", "info")
 	viper.SetDefault("log.file", "./logs/app.log")

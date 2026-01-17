@@ -183,7 +183,9 @@ func main() {
 	// In development with Vite, this may be ignored as you use port 5173
 	// In production or standalone mode, this serves the built Vue app
 	router.Static("/assets", "./web/dist/assets")
-	router.StaticFile("/favicon.ico", "./web/dist/favicon.ico")
+	router.StaticFile("/favicon.ico", "./web/dist/favicon.ico") // Keep for legacy if file added later
+	router.StaticFile("/favicon.png", "./web/dist/favicon.png")
+	router.StaticFile("/logo.png", "./web/dist/logo.png")
 	router.StaticFile("/", "./web/dist/index.html")
 
 	router.NoRoute(func(c *gin.Context) {

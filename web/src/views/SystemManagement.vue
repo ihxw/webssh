@@ -60,7 +60,7 @@
             </a-col>
             <a-col :span="8">
               <a-form-item :label="t('system.accessExpiration')" name="access_expiration">
-                <a-input v-model:value="settingsForm.access_expiration" placeholder="15m" />
+                <a-input v-model:value="settingsForm.access_expiration" placeholder="60m" />
               </a-form-item>
             </a-col>
             <a-col :span="8">
@@ -99,7 +99,7 @@ const settingsForm = reactive({
   idle_timeout: '30m',
   max_connections_per_user: 10,
   login_rate_limit: 20,
-  access_expiration: '15m',
+  access_expiration: '60m',
   refresh_expiration: '168h'
 })
 

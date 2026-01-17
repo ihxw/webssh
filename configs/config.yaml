@@ -23,8 +23,8 @@ security:
   # 登录频率限制 (每分钟允许的尝试次数)
   login_rate_limit: 20
 
-  # Access Token 有效(默认 15m)
-  access_expiration: 15m
+  # Access Token 有效(默认 60m)
+  access_expiration: 60m
   
   # Refresh Token 有效(默认 168h = 7
   refresh_expiration: 24h
