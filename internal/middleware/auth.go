@@ -38,6 +38,15 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 
 		claims, err := utils.ValidateToken(token, jwtSecret)
 		if err != nil {
+			// Try as a one-time ticket (for WebSockets)
+			if ticketData, ok := utils.ValidateTicket(token); ok {
+				c.Set("user_id", ticketData.UserID)
+				c.Set("username", ticketData.Username)
+				c.Set("role", ticketData.Role)
+				c.Next()
+				return
+			}
+
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"error":   "invalid or expired token",

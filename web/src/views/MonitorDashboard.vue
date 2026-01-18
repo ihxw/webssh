@@ -118,6 +118,7 @@ import { ref, onMounted, onUnmounted, computed, h, watch } from 'vue'
 import { useSSHStore } from '../stores/ssh'
 import { ArrowDownOutlined, ArrowUpOutlined, AppleOutlined, WindowsOutlined, DesktopOutlined, LineChartOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
+import { getWSTicket } from '../api/auth'
 
 const { t } = useI18n()
 const sshStore = useSSHStore()
@@ -289,37 +290,43 @@ const sortedHosts = computed(() => {
     })
 })
 
-// ...
+const connect = async () => {
+  try {
+    // Get one-time ticket for secure connection
+    const res = await getWSTicket()
+    const ticket = res.ticket
 
-const connect = () => {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const token = localStorage.getItem('token')
-  const wsUrl = `${protocol}//${window.location.host}/api/monitor/stream?token=${token}`
-  
-  socket.value = new WebSocket(wsUrl)
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${protocol}//${window.location.host}/api/monitor/stream?token=${ticket}`
+    
+    socket.value = new WebSocket(wsUrl)
 
-  socket.value.onopen = () => {
-    connected.value = true
-  }
-
-  socket.value.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data)
-      if (msg.type === 'init') {
-        updateHosts(msg.data)
-      } else if (msg.type === 'update') {
-        updateHosts(msg.data)
-      } else if (msg.type === 'remove') {
-        // removeHost(msg.data)
-      }
-    } catch (e) {
-      console.error(e)
+    socket.value.onopen = () => {
+      connected.value = true
     }
-  }
 
-  socket.value.onclose = () => {
-    connected.value = false
-    setTimeout(connect, 3000)
+    socket.value.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data)
+        if (msg.type === 'init') {
+          updateHosts(msg.data)
+        } else if (msg.type === 'update') {
+          updateHosts(msg.data)
+        } else if (msg.type === 'remove') {
+          // removeHost(msg.data)
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    socket.value.onclose = () => {
+      connected.value = false
+      setTimeout(connect, 3000)
+    }
+  } catch (err) {
+    console.error('Failed to connect to monitor stream:', err)
+    setTimeout(connect, 5000)
   }
 }
 
