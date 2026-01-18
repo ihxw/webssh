@@ -25,6 +25,11 @@
                     <template #icon><LineChartOutlined /></template>
                 </a-button>
              </a-tooltip>
+             <a-tooltip :title="t('terminal.connect')">
+                <a-button type="text" shape="circle" @click="handleConnect(host)">
+                    <template #icon><CodeOutlined /></template>
+                </a-button>
+             </a-tooltip>
              <a-tooltip :title="t('monitor.history')">
                 <a-button type="text" shape="circle" @click="showHistory(host.host_id)">
                     <template #icon><HistoryOutlined /></template>
@@ -173,8 +178,9 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, h, watch, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSSHStore } from '../stores/ssh'
-import { ArrowDownOutlined, ArrowUpOutlined, AppleOutlined, WindowsOutlined, DesktopOutlined, LineChartOutlined, HistoryOutlined, SettingOutlined } from '@ant-design/icons-vue'
+import { ArrowDownOutlined, ArrowUpOutlined, AppleOutlined, WindowsOutlined, DesktopOutlined, LineChartOutlined, HistoryOutlined, SettingOutlined, CodeOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import { getWSTicket } from '../api/auth'
 import { getMonitorLogs } from '../api/ssh'
@@ -182,6 +188,7 @@ import { message } from 'ant-design-vue'
 
 const { t } = useI18n()
 const sshStore = useSSHStore()
+const router = useRouter()
 
 const hosts = ref([])
 const connected = ref(true)
@@ -199,21 +206,45 @@ const getOsIcon = (os) => {
   return DesktopOutlined
 }
 
+const handleConnect = (host) => {
+    // Check if terminal exists
+    const existingTerminal = Array.from(sshStore.terminals.values()).find(t => t.hostId === host.host_id)
+    if (existingTerminal) {
+        sshStore.setCurrentTerminal(existingTerminal.id)
+        router.push('/dashboard/terminal')
+    } else {
+        const fullHost = sshStore.hosts.find(h => h.id === host.host_id)
+        if (fullHost) {
+             sshStore.addTerminal({
+                hostId: fullHost.id,
+                name: fullHost.name,
+                host: fullHost.host,
+                port: fullHost.port
+              })
+              router.push('/dashboard/terminal')
+        }
+    }
+}
+
 const syncHostsFromStore = () => {
   const storeHosts = sshStore.hosts.filter(h => h.monitor_enabled)
   
-  // 1. Add new hosts or update existing static info
-  storeHosts.forEach(sh => {
-    const customId = sh.id
-    const existing = hosts.value.findIndex(h => h.host_id === customId)
-    
-    if (existing !== -1) {
+  // Rebuild hosts list respecting storeHosts order to ensure display order matches list order
+  const newHosts = storeHosts.map(sh => {
+    const existing = hosts.value.find(h => h.host_id === sh.id)
+    if (existing) {
       // Update static info
-      hosts.value[existing].hostname = sh.host
-      // hosts.value[existing].name = sh.name // Using getHostName helper in template anyway
+      existing.hostname = sh.host
+      // Update notification settings if they changed in store
+      existing.notify_offline_enabled = sh.notify_offline_enabled
+      existing.notify_traffic_enabled = sh.notify_traffic_enabled
+      existing.notify_offline_threshold = sh.notify_offline_threshold
+      existing.notify_traffic_threshold = sh.notify_traffic_threshold
+      existing.notify_channels = sh.notify_channels
+      return existing
     } else {
       // Add new host with default/empty metrics
-      hosts.value.push({
+      return {
         host_id: sh.id,
         hostname: sh.host,
         os: '',
@@ -229,14 +260,11 @@ const syncHostsFromStore = () => {
         net_rx: 0,
         net_tx: 0,
         last_updated: 0
-      })
+      }
     }
   })
   
-  // 2. Remove hosts that are no longer in store or disabled
-  hosts.value = hosts.value.filter(h => {
-    return storeHosts.find(sh => sh.id === h.host_id)
-  })
+  hosts.value = newHosts
 }
 
 // Watch for store changes
@@ -341,13 +369,8 @@ const formatTrafficUsage = (host) => {
 }
 
 const sortedHosts = computed(() => {
-    // Sort: Online first, then by ID
-    return [...hosts.value].sort((a, b) => {
-        const aOffline = isOffline(a)
-        const bOffline = isOffline(b)
-        if (aOffline === bOffline) return b.host_id - a.host_id
-        return aOffline ? 1 : -1
-    })
+    // Return hosts as is (already sorted by syncHostsFromStore matching sshStore.hosts order)
+    return hosts.value
 })
 
 const connect = async () => {

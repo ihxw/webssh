@@ -116,6 +116,7 @@ func main() {
 		protected.GET("/ssh-hosts/:id", sshHostHandler.Get)
 		protected.POST("/ssh-hosts/:id/test", sshHostHandler.TestConnection)
 		protected.PUT("/ssh-hosts/:id/fingerprint", sshHostHandler.UpdateFingerprint)
+		protected.PUT("/ssh-hosts/reorder", sshHostHandler.Reorder)
 
 		// Monitor Management
 		protected.GET("/monitor/stream", monitorHandler.Stream)

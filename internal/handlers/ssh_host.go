@@ -71,7 +71,7 @@ func (h *SSHHostHandler) List(c *gin.Context) {
 	group := c.Query("group")
 	search := c.Query("search")
 
-	query := h.db.Model(&models.SSHHost{}).Where("user_id = ?", userID)
+	query := h.db.Model(&models.SSHHost{}).Where("user_id = ?", userID).Order("sort_order asc")
 
 	// Group filter
 	if group != "" {
@@ -398,6 +398,41 @@ func (h *SSHHostHandler) TestConnection(c *gin.Context) {
 
 type UpdateFingerprintRequest struct {
 	Fingerprint string `json:"fingerprint" binding:"required"`
+}
+
+type ReorderRequest struct {
+	DeviceIds []uint `json:"device_ids" binding:"required"`
+}
+
+// Reorder updates the sort order of hosts
+func (h *SSHHostHandler) Reorder(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
+	var req ReorderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid request: "+err.Error())
+		return
+	}
+
+	// Transaction to ensure atomicity
+	err := h.db.Transaction(func(tx *gorm.DB) error {
+		for i, id := range req.DeviceIds {
+			// Update only if the host belongs to the user
+			if err := tx.Model(&models.SSHHost{}).
+				Where("id = ? AND user_id = ?", id, userID).
+				Update("sort_order", i).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to reorder hosts")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "hosts reordered successfully"})
 }
 
 // UpdateFingerprint updates the host fingerprint

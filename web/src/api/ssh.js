@@ -40,3 +40,7 @@ export const updateHostFingerprint = async (id, fingerprint) => {
 export const getMonitorLogs = async (id, page = 1, pageSize = 20) => {
     return await api.get(`/ssh-hosts/${id}/monitor/logs?page=${page}&page_size=${pageSize}`)
 }
+
+export const reorderHosts = async (ids) => {
+    return await api.put('/ssh-hosts/reorder', { device_ids: ids })
+}

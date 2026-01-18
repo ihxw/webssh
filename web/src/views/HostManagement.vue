@@ -25,6 +25,11 @@
         size="small"
       >
         <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'drag'">
+            <div class="drag-handle" style="cursor: move; color: #999;">
+               <HolderOutlined />
+            </div>
+          </template>
           <template v-if="column.key === 'status'">
             <div style="display: flex; align-items: center">
               <a-tooltip :title="hostStatuses[record.id]?.status === 'online' ? t('monitor.online') : (hostStatuses[record.id]?.error || t('monitor.checking'))">
@@ -178,7 +183,8 @@ import {
   LinkOutlined,
   LoadingOutlined,
   DashboardOutlined,
-  StopOutlined
+  StopOutlined,
+  HolderOutlined
 } from '@ant-design/icons-vue'
 import { useSSHStore } from '../stores/ssh'
 import { useI18n } from 'vue-i18n'
@@ -212,6 +218,7 @@ const hostForm = ref({
 })
 
 const columns = computed(() => [
+  { title: '', key: 'drag', width: 30, align: 'center' },
   { title: t('host.name'), dataIndex: 'name', key: 'name' },
   { title: t('host.host'), dataIndex: 'host', key: 'host' },
   { title: t('monitor.status'), key: 'status', width: 100 },
@@ -264,9 +271,39 @@ const handleStopMonitor = async (host) => {
 const hostStatuses = ref({})
 const checkingStatus = ref(false)
 
+import Sortable from 'sortablejs'
+
+// ... existing imports
+
 onMounted(async () => {
   await loadHosts()
   checkAllStatuses()
+  
+  const tableWithBody = document.querySelector('.ant-table-tbody')
+  if (tableWithBody) {
+    Sortable.create(tableWithBody, {
+      handle: '.drag-handle', // We'll add a handle column or row cursor
+      animation: 150,
+      onEnd: async ({ oldIndex, newIndex }) => {
+        if (oldIndex === newIndex) return
+        
+        // Update local list instantly for UI responsiveness
+        const item = sshStore.hosts.splice(oldIndex, 1)[0]
+        sshStore.hosts.splice(newIndex, 0, item)
+        
+        // Send order to backend
+        const ids = sshStore.hosts.map(h => h.id)
+        try {
+            await sshStore.reorderHosts(ids)
+            message.success(t('host.orderUpdated'))
+        } catch (e) {
+            message.error(t('host.failUpdateOrder'))
+            // Revert on failure? Ideally yes, but simplified for now.
+             await loadHosts() // Reload to restore correct state
+        }
+      }
+    })
+  }
 })
 
 const checkAllStatuses = async () => {

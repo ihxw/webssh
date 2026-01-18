@@ -22,6 +22,7 @@ type SSHHost struct {
 	MonitorEnabled      bool   `gorm:"default:false" json:"monitor_enabled"`
 	MonitorSecret       string `gorm:"size:64" json:"-"`
 	Description         string `gorm:"type:text" json:"description"`
+	SortOrder           int    `gorm:"default:0" json:"sort_order"`
 	// Network Config
 	NetInterface string `json:"net_interface" gorm:"default:'auto'"` // Selected interface
 	NetResetDay  int    `json:"net_reset_day" gorm:"default:1"`      // Day of month to reset
