@@ -14,10 +14,10 @@ $DistDir = Join-Path $WebDir "dist"
 # Platforms to build for
 $Targets = @(
     @{ OS = "windows"; Arch = "amd64"; Ext = ".exe"; Archive = "zip" },
-    @{ OS = "linux";   Arch = "amd64"; Ext = "";     Archive = "tar.gz" },
-    @{ OS = "linux";   Arch = "arm64"; Ext = "";     Archive = "tar.gz" },
-    @{ OS = "darwin";  Arch = "amd64"; Ext = "";     Archive = "tar.gz" },
-    @{ OS = "darwin";  Arch = "arm64"; Ext = "";     Archive = "tar.gz" }
+    @{ OS = "linux"; Arch = "amd64"; Ext = ""; Archive = "tar.gz" },
+    @{ OS = "linux"; Arch = "arm64"; Ext = ""; Archive = "tar.gz" },
+    @{ OS = "darwin"; Arch = "amd64"; Ext = ""; Archive = "tar.gz" },
+    @{ OS = "darwin"; Arch = "arm64"; Ext = ""; Archive = "tar.gz" }
 )
 
 Write-Host "Starting TermiScope Release Build..." -ForegroundColor Cyan
@@ -69,7 +69,7 @@ TermiScope Monitoring Agent
 ===========================
 
 Supported OS:
-- Linux (amd64, arm64)
+- Linux (amd64, arm64, armv7)
 - Windows (amd64)
 - macOS (amd64, arm64)
 
@@ -95,6 +95,10 @@ go build -o (Join-Path $AgentDir "termiscope-agent-linux-amd64") ./cmd/agent/mai
 Write-Host "   Building Agent linux/arm64..."
 $Env:GOOS = "linux"; $Env:GOARCH = "arm64"
 go build -o (Join-Path $AgentDir "termiscope-agent-linux-arm64") ./cmd/agent/main.go
+# Agent Linux ARM (v7)
+Write-Host "   Building Agent linux/arm..."
+$Env:GOOS = "linux"; $Env:GOARCH = "arm"; $Env:GOARM = "7"
+go build -o (Join-Path $AgentDir "termiscope-agent-linux-arm") ./cmd/agent/main.go
 
 # Agent Windows AMD64
 Write-Host "   Building Agent windows/amd64..."
@@ -219,6 +223,7 @@ foreach ($Target in $Targets) {
 # Cleanup Env Vars
 Remove-Item Env:\GOOS -ErrorAction SilentlyContinue
 Remove-Item Env:\GOARCH -ErrorAction SilentlyContinue
+Remove-Item Env:\GOARM -ErrorAction SilentlyContinue
 Remove-Item Env:\CGO_ENABLED -ErrorAction SilentlyContinue
 
 Write-Host "========================================" -ForegroundColor Cyan

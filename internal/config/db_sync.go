@@ -14,7 +14,7 @@ var defaultSettings = map[string]string{
 	"ssh.idle_timeout":             "30m",
 	"ssh.max_connections_per_user": "10",
 	"security.login_rate_limit":    "20",
-	"security.access_expiration":   "15m",
+	"security.access_expiration":   "60m",
 	"security.refresh_expiration":  "168h",
 }
 

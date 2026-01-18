@@ -153,6 +153,24 @@ func (h *SystemHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
+	// Validate duration formats
+	if _, err := time.ParseDuration(req.AccessExpiration); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid access_expiration format (e.g. 60m, 1h)")
+		return
+	}
+	if _, err := time.ParseDuration(req.RefreshExpiration); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid refresh_expiration format (e.g. 168h)")
+		return
+	}
+	if _, err := time.ParseDuration(req.SSHTimeout); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid ssh_timeout format (e.g. 30s)")
+		return
+	}
+	if _, err := time.ParseDuration(req.IdleTimeout); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid idle_timeout format (e.g. 30m)")
+		return
+	}
+
 	// Update DB (Transaction)
 	err := h.db.Transaction(func(tx *gorm.DB) error {
 		updates := map[string]string{

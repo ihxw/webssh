@@ -20,9 +20,16 @@ $Env:GOOS = "linux"
 $Env:GOARCH = "arm64"
 go build -o "$AgentDir/termiscope-agent-linux-arm64" ./cmd/agent/main.go
 
+# Linux ARM (v7)
+Write-Host "Building linux/arm..."
+$Env:GOOS = "linux"
+$Env:GOARCH = "arm"
+$Env:GOARM = "7"
+go build -o "$AgentDir/termiscope-agent-linux-arm" ./cmd/agent/main.go
+
 # Reset Env
 Remove-Item Env:\GOOS -ErrorAction SilentlyContinue
 Remove-Item Env:\GOARCH -ErrorAction SilentlyContinue
 
 Write-Host "Agents built successfully in $AgentDir/" -ForegroundColor Green
-ls $AgentDir
+Get-ChildItem $AgentDir

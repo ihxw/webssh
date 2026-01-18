@@ -51,7 +51,7 @@ type RefreshTokenRequest struct {
 func (h *AuthHandler) generateTokens(user *models.User) (string, string, error) {
 	accessExp, err := time.ParseDuration(h.config.Security.AccessExpiration)
 	if err != nil {
-		accessExp = 15 * time.Minute
+		accessExp = 60 * time.Minute
 	}
 
 	refreshExp, err := time.ParseDuration(h.config.Security.RefreshExpiration)
@@ -166,7 +166,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	// Generate new access token
 	accessExp, err := time.ParseDuration(h.config.Security.AccessExpiration)
 	if err != nil {
-		accessExp = 15 * time.Minute
+		accessExp = 60 * time.Minute
 	}
 
 	accessToken, err := utils.GenerateToken(user.ID, user.Username, user.Role, "access", accessExp, h.config.Security.JWTSecret)

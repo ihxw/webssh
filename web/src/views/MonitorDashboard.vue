@@ -46,6 +46,7 @@
                   {{ t('monitor.cpu') }}
                   <span v-if="host.cpu_count" style="font-size: 11px; color: #8c8c8c; margin-left: 4px">
                      {{ host.cpu_count }}C {{ host.cpu_model }}
+                     <span v-if="host.cpu_mhz > 0"> @ {{ formatMhz(host.cpu_mhz) }}</span>
                   </span>
                 </span>
                 <span>{{ formatCpu(host.cpu) }}%</span>
@@ -155,6 +156,7 @@ const syncHostsFromStore = () => {
         cpu: 0,
         cpu_count: 0,
         cpu_model: '',
+        cpu_mhz: 0,
         mem_used: 0,
         mem_total: 0,
         disk_used: 0,
@@ -198,9 +200,17 @@ const isOffline = (host) => {
   return (now - host.last_updated) > 15
 }
 
-const getStatus = (pct) => {
-  if (pct >= 90) return 'exception'
-  if (pct >= 80) return 'active'
+const formatMhz = (mhz) => {
+  if (!mhz) return ''
+  if (mhz >= 1000) {
+    return (mhz / 1000).toFixed(2) + ' GHz'
+  }
+  return mhz.toFixed(0) + ' MHz'
+}
+
+const getStatus = (percent) => {
+  if (percent >= 90) return 'exception'
+  if (percent >= 80) return 'active'
   return 'normal'
 }
 

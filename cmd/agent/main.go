@@ -34,6 +34,7 @@ type MetricData struct {
 	CPU        float64         `json:"cpu"`
 	CpuCount   int             `json:"cpu_count"`
 	CpuModel   string          `json:"cpu_model"`
+	CpuMhz     float64         `json:"cpu_mhz"`
 	MemUsed    uint64          `json:"mem_used"`
 	MemTotal   uint64          `json:"mem_total"`
 	DiskUsed   uint64          `json:"disk_used"`
@@ -54,6 +55,7 @@ var (
 	cachedHostname string
 	cachedCpuModel string
 	cachedCpuCount int
+	cachedCpuMhz   float64
 )
 
 func main() {
@@ -104,6 +106,7 @@ func initSystemInfo() {
 	if cpuInfo, err := cpu.Info(); err == nil && len(cpuInfo) > 0 {
 		cachedCpuModel = cpuInfo[0].ModelName
 		cachedCpuCount = len(cpuInfo) // Logical cores
+		cachedCpuMhz = cpuInfo[0].Mhz
 	}
 }
 
@@ -114,6 +117,7 @@ func collectMetrics() MetricData {
 		Hostname: cachedHostname,
 		CpuCount: cachedCpuCount,
 		CpuModel: cachedCpuModel,
+		CpuMhz:   cachedCpuMhz,
 	}
 
 	// Uptime

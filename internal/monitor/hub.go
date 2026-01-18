@@ -26,10 +26,11 @@ type InterfaceData struct {
 // MetricData represents the data packet sent by the agent
 type MetricData struct {
 	HostID       uint    `json:"host_id"`
-	Uptime       uint64  `json:"uptime"`      // Seconds
-	CPU          float64 `json:"cpu"`         // Percentage
+	Uptime       uint64  `json:"uptime"` // Seconds
+	CPU          float64 `json:"cpu"`    // Percentage
 	CpuCount     int     `json:"cpu_count"`
 	CpuModel     string  `json:"cpu_model"`
+	CpuMhz       float64 `json:"cpu_mhz"`
 	MemUsed      uint64  `json:"mem_used"`    // Bytes
 	MemTotal     uint64  `json:"mem_total"`   // Bytes
 	DiskUsed     uint64  `json:"disk_used"`   // Bytes

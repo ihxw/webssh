@@ -414,6 +414,8 @@ func (h *MonitorHandler) Deploy(c *gin.Context) {
 		goArch = "amd64"
 	case "aarch64", "arm64":
 		goArch = "arm64"
+	case "armv7l", "armv7":
+		goArch = "arm"
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported architecture: %s", arch)})
 		return
