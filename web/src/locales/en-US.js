@@ -247,10 +247,24 @@ export default {
         fetchSettingsFailed: 'Failed to fetch settings',
         backupPasswordTitle: 'Set Backup Password',
         backupPasswordDesc: 'Set a password to encrypt the backup file. Leave empty for no encryption.',
-        passwordPlaceholder: 'Password',
+        passwordPlaceholder: 'Enter password (optional)',
         restorePasswordTitle: 'Enter Backup Password',
         restorePasswordDesc: 'If your backup file is encrypted, please enter the password.',
-        incorrectPassword: 'Incorrect password, please try again'
+        incorrectPassword: 'Incorrect password, please try again',
+
+        notificationTitle: 'Notification Settings',
+        smtpServer: 'SMTP Server',
+        smtpPort: 'SMTP Port',
+        smtpUser: 'SMTP User',
+        smtpPassword: 'SMTP Password',
+        smtpFrom: 'Sender Email',
+        smtpTo: 'Recipient Email',
+        telegramToken: 'Telegram Bot Token',
+        telegramToken: 'Telegram Bot Token',
+        telegramChatId: 'Telegram Chat ID',
+        notificationTemplate: 'Notification Template',
+        resetTemplate: 'Reset to Default',
+        templateHelp: 'Available variables'
     },
     network: {
         title: 'Network Detail',
@@ -308,6 +322,12 @@ export default {
         offline: 'Offline',
         online: 'Online',
         checking: 'Checking',
+        channelEmail: 'Email',
+        channelTelegram: 'Telegram',
+        enableOfflineNotify: 'Enable Offline Notification',
+        enableTrafficNotify: 'Enable Traffic Warning',
+        enableTrafficNotify: 'Enable Traffic Warning',
+        stop: 'Stop',
         stop: 'Stop',
         disableConfirm: 'Disable monitoring?'
     }

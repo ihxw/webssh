@@ -38,34 +38,94 @@
       <div class="management-section">
         <a-form :model="settingsForm" layout="vertical" @finish="handleSaveSettings">
           <a-row :gutter="16">
-            <a-col :span="8">
+            <a-col :span="6">
               <a-form-item :label="t('system.sshTimeout')" name="ssh_timeout">
                 <a-input v-model:value="settingsForm.ssh_timeout" />
               </a-form-item>
             </a-col>
-            <a-col :span="8">
+            <a-col :span="6">
               <a-form-item :label="t('system.idleTimeout')" name="idle_timeout">
                 <a-input v-model:value="settingsForm.idle_timeout" />
               </a-form-item>
             </a-col>
-            <a-col :span="8">
+            <a-col :span="6">
               <a-form-item :label="t('system.maxConnectionsPerUser')" name="max_connections_per_user">
                 <a-input-number v-model:value="settingsForm.max_connections_per_user" :min="1" style="width: 100%" />
               </a-form-item>
             </a-col>
-            <a-col :span="8">
+            <a-col :span="6">
               <a-form-item :label="t('system.loginRateLimit')" name="login_rate_limit">
                 <a-input-number v-model:value="settingsForm.login_rate_limit" :min="1" style="width: 100%" />
               </a-form-item>
             </a-col>
-            <a-col :span="8">
+            <a-col :span="6">
               <a-form-item :label="t('system.accessExpiration')" name="access_expiration">
                 <a-input v-model:value="settingsForm.access_expiration" placeholder="60m" />
               </a-form-item>
             </a-col>
-            <a-col :span="8">
+            <a-col :span="6">
               <a-form-item :label="t('system.refreshExpiration')" name="refresh_expiration">
                 <a-input v-model:value="settingsForm.refresh_expiration" placeholder="168h" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+
+          <a-divider orientation="left">{{ t('system.notificationTitle') }}</a-divider>
+          <a-row :gutter="16">
+            <a-col :span="8">
+              <a-form-item :label="t('system.smtpServer')" name="smtp_server">
+                <a-input v-model:value="settingsForm.smtp_server" placeholder="smtp.example.com" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="4">
+              <a-form-item :label="t('system.smtpPort')" name="smtp_port">
+                <a-input v-model:value="settingsForm.smtp_port" placeholder="587" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="6">
+              <a-form-item :label="t('system.smtpUser')" name="smtp_user">
+                <a-input v-model:value="settingsForm.smtp_user" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="6">
+              <a-form-item :label="t('system.smtpPassword')" name="smtp_password">
+                <a-input-password v-model:value="settingsForm.smtp_password" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item :label="t('system.smtpFrom')" name="smtp_from">
+                <a-input v-model:value="settingsForm.smtp_from" placeholder="noreply@example.com" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item :label="t('system.smtpTo')" name="smtp_to">
+                <a-input v-model:value="settingsForm.smtp_to" placeholder="admin@example.com" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-row :gutter="16">
+             <a-col :span="12">
+              <a-form-item :label="t('system.telegramToken')" name="telegram_bot_token">
+                <a-input v-model:value="settingsForm.telegram_bot_token" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item :label="t('system.telegramChatId')" name="telegram_chat_id">
+                <a-input v-model:value="settingsForm.telegram_chat_id" />
+              </a-form-item>
+            </a-col>
+
+          </a-row>
+          <a-row :gutter="16">
+            <a-col :span="24">
+              <a-form-item :label="t('system.notificationTemplate')" name="notification_template">
+                <a-textarea v-model:value="settingsForm.notification_template" :rows="6" />
+                <div style="margin-top: 8px">
+                    <a-button @click="resetNotificationTemplate" size="small">{{ t('system.resetTemplate') }}</a-button>
+                    <span style="margin-left: 8px; font-size: 12px; color: #888">
+                        {{ t('system.templateHelp') }}: <span v-pre>{{emoji}}, {{event}}, {{client}}, {{message}}, {{time}}</span>
+                    </span>
+                </div>
               </a-form-item>
             </a-col>
           </a-row>
@@ -136,13 +196,38 @@ const settingsForm = reactive({
   max_connections_per_user: 10,
   login_rate_limit: 20,
   access_expiration: '60m',
-  refresh_expiration: '168h'
+  access_expiration: '60m',
+  refresh_expiration: '168h',
+  smtp_server: '',
+  smtp_port: '',
+  smtp_user: '',
+  smtp_password: '',
+  smtp_from: '',
+  smtp_to: '',
+  smtp_to: '',
+  telegram_bot_token: '',
+  telegram_chat_id: '',
+  notification_template: ''
 })
+
+const DefaultNotificationTemplate = `{{emoji}}{{emoji}}{{emoji}}
+Event: {{event}}
+Clients: {{client}}
+Message: {{message}}
+Time: {{time}}`
+
+const resetNotificationTemplate = () => {
+    settingsForm.notification_template = DefaultNotificationTemplate
+}
 
 const fetchSettings = async () => {
   try {
     const response = await api.get('/system/settings')
     Object.assign(settingsForm, response)
+    // Auto-fill default template if empty
+    if (!settingsForm.notification_template) {
+        settingsForm.notification_template = DefaultNotificationTemplate
+    }
   } catch (err) {
     message.error(t('system.fetchSettingsFailed'))
   }

@@ -163,14 +163,24 @@ func copyFile(src, dst string) error {
 
 // GetSettings returns current editable settings
 func (h *SystemHandler) GetSettings(c *gin.Context) {
-	utils.SuccessResponse(c, http.StatusOK, gin.H{
+	// Fetch notification settings from DB
+	var configs []models.SystemConfig
+	h.db.Where("config_key LIKE ? OR config_key LIKE ? OR config_key = ?", "smtp_%", "telegram_%", "notification_template").Find(&configs)
+
+	settings := gin.H{
 		"ssh_timeout":              h.config.SSH.Timeout,
 		"idle_timeout":             h.config.SSH.IdleTimeout,
 		"max_connections_per_user": h.config.SSH.MaxConnectionsPerUser,
 		"login_rate_limit":         h.config.Security.LoginRateLimit,
 		"access_expiration":        h.config.Security.AccessExpiration,
 		"refresh_expiration":       h.config.Security.RefreshExpiration,
-	})
+	}
+
+	for _, cfg := range configs {
+		settings[cfg.ConfigKey] = cfg.ConfigValue
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, settings)
 }
 
 // UpdateSettingsRequest defines the request body for updating settings
@@ -181,6 +191,16 @@ type UpdateSettingsRequest struct {
 	LoginRateLimit        int    `json:"login_rate_limit" binding:"required"`
 	AccessExpiration      string `json:"access_expiration" binding:"required"`
 	RefreshExpiration     string `json:"refresh_expiration" binding:"required"`
+	// Notification Settings (Optional)
+	SMTPServer           string `json:"smtp_server"`
+	SMTPPort             string `json:"smtp_port"`
+	SMTPUser             string `json:"smtp_user"`
+	SMTPPassword         string `json:"smtp_password"`
+	SMTPFrom             string `json:"smtp_from"`
+	SMTPTo               string `json:"smtp_to"`
+	TelegramBotToken     string `json:"telegram_bot_token"`
+	TelegramChatID       string `json:"telegram_chat_id"`
+	NotificationTemplate string `json:"notification_template"`
 }
 
 // Global rate limiter reference for dynamic updates
@@ -221,12 +241,32 @@ func (h *SystemHandler) UpdateSettings(c *gin.Context) {
 			"security.login_rate_limit":    fmt.Sprintf("%d", req.LoginRateLimit),
 			"security.access_expiration":   req.AccessExpiration,
 			"security.refresh_expiration":  req.RefreshExpiration,
+			// Notification
+			"smtp_server":           req.SMTPServer,
+			"smtp_port":             req.SMTPPort,
+			"smtp_user":             req.SMTPUser,
+			"smtp_password":         req.SMTPPassword,
+			"smtp_from":             req.SMTPFrom,
+			"smtp_to":               req.SMTPTo,
+			"telegram_bot_token":    req.TelegramBotToken,
+			"telegram_chat_id":      req.TelegramChatID,
+			"notification_template": req.NotificationTemplate,
 		}
 
 		for key, value := range updates {
-			// Upsert
-			if err := tx.Model(&models.SystemConfig{}).Where("config_key = ?", key).Update("config_value", value).Error; err != nil {
-				return err
+			// Upsert Logic
+			var count int64
+			tx.Model(&models.SystemConfig{}).Where("config_key = ?", key).Count(&count)
+			if count == 0 {
+				// Create
+				if err := tx.Create(&models.SystemConfig{ConfigKey: key, ConfigValue: value}).Error; err != nil {
+					return err
+				}
+			} else {
+				// Update
+				if err := tx.Model(&models.SystemConfig{}).Where("config_key = ?", key).Update("config_value", value).Error; err != nil {
+					return err
+				}
 			}
 		}
 		return nil

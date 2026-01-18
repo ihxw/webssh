@@ -13,6 +13,7 @@ import (
 	"github.com/ihxw/termiscope/internal/database"
 	"github.com/ihxw/termiscope/internal/handlers"
 	"github.com/ihxw/termiscope/internal/middleware"
+	"github.com/ihxw/termiscope/internal/monitor"
 	"github.com/ihxw/termiscope/internal/utils"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -57,6 +58,9 @@ func main() {
 
 	// Initialize separate Error Logger
 	utils.InitErrorLogger("logs/error.log")
+
+	// Start Monitor Background Checker
+	monitor.StartMonitorChecker(db)
 
 	// Set Gin mode
 	if cfg.Server.Mode == "release" {
@@ -117,6 +121,7 @@ func main() {
 		protected.GET("/monitor/stream", monitorHandler.Stream)
 		protected.POST("/ssh-hosts/:id/monitor/deploy", monitorHandler.Deploy)
 		protected.POST("/ssh-hosts/:id/monitor/stop", monitorHandler.Stop)
+		protected.GET("/ssh-hosts/:id/monitor/logs", monitorHandler.GetStatusLogs)
 
 		// SFTP routes
 		sftpHandler := handlers.NewSftpHandler(db, cfg)

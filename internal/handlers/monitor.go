@@ -212,6 +212,7 @@ func (h *MonitorHandler) Pulse(c *gin.Context) {
 		host.NetMonthlyRx = 0
 		host.NetMonthlyTx = 0
 		host.NetLastResetDate = todayStr
+		host.TrafficAlerted = false // Reset alert flag
 		dbUpdated = true
 	}
 
@@ -251,12 +252,63 @@ func (h *MonitorHandler) Pulse(c *gin.Context) {
 		host.NetMonthlyRx += deltaRx
 		host.NetMonthlyTx += deltaTx
 		dbUpdated = true
+
+		// Check Traffic Threshold
+		if host.NetTrafficLimit > 0 {
+			totalUsed := host.NetMonthlyRx + host.NetMonthlyTx
+			// Careful with overflow if limit is huge? uint64 is fine.
+			// Calculate percentage
+			percent := uint64(0)
+			if host.NetTrafficLimit > 0 {
+				percent = totalUsed * 100 / host.NetTrafficLimit
+			}
+
+			threshold := uint64(host.NotifyTrafficThreshold)
+			if threshold == 0 {
+				threshold = 90
+			} // Default
+
+			if host.NotifyTrafficEnabled && percent >= threshold && !host.TrafficAlerted {
+				host.TrafficAlerted = true
+				dbUpdated = true
+				// Send Notification
+				msg := fmt.Sprintf("Host '%s' (ID: %d) has used %d%% of its traffic limit.\nUsed: %s / %s",
+					host.Name, host.ID, percent,
+					utils.FormatBytes(totalUsed), utils.FormatBytes(host.NetTrafficLimit))
+
+				utils.SendNotification(h.DB, host, fmt.Sprintf("Traffic Warning: %s", host.Name), msg)
+			}
+		}
 	}
 
 	// Always update LastRaw
 	if host.NetLastRawRx != currentRx || host.NetLastRawTx != currentTx {
 		host.NetLastRawRx = currentRx
 		host.NetLastRawTx = currentTx
+		dbUpdated = true
+	}
+
+	// Update Monitor Status (Heartbeat)
+	host.LastPulse = time.Now()
+	if host.Status != "online" {
+		host.Status = "online"
+		// Record "Coming Online" event
+		go func(hostID uint) {
+			h.DB.Create(&models.MonitorStatusLog{
+				HostID:    hostID,
+				Status:    "online",
+				CreatedAt: time.Now(),
+			})
+		}(host.ID)
+
+		// Send Back Online Notification
+		if host.NotifyOfflineEnabled {
+			utils.SendNotification(h.DB, host,
+				fmt.Sprintf("Host Back Online: %s", host.Name),
+				fmt.Sprintf("Host '%s' (ID: %d) is back online.", host.Name, host.ID),
+			)
+		}
+
 		dbUpdated = true
 	}
 
@@ -626,4 +678,32 @@ func (h *MonitorHandler) Stop(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Monitoring stopped and agent removed"})
+}
+
+// GetStatusLogs returns the status history for a host
+func (h *MonitorHandler) GetStatusLogs(c *gin.Context) {
+	id := c.Param("id")
+
+	// Pagination
+	page := utils.GetIntQuery(c, "page", 1)
+	pageSize := utils.GetIntQuery(c, "page_size", 20)
+	offset := (page - 1) * pageSize
+
+	var logs []models.MonitorStatusLog
+	var total int64
+
+	db := h.DB.Model(&models.MonitorStatusLog{}).Where("host_id = ?", id)
+
+	db.Count(&total)
+
+	if err := db.Order("created_at desc").Offset(offset).Limit(pageSize).Find(&logs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch logs"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":  logs,
+		"total": total,
+		"page":  page,
+	})
 }

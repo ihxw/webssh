@@ -38,6 +38,18 @@ type SSHHost struct {
 	NetTrafficUsedAdjustment uint64 `json:"net_traffic_used_adjustment" gorm:"default:0"`    // Bytes, manual correction
 	NetTrafficCounterMode    string `json:"net_traffic_counter_mode" gorm:"default:'total'"` // total, rx, tx
 
+	// Monitor Status
+	Status    string    `json:"status" gorm:"default:'offline'"` // online, offline
+	LastPulse time.Time `json:"last_pulse"`
+
+	// Notification Config
+	NotifyOfflineEnabled   bool   `json:"notify_offline_enabled" gorm:"default:true"`
+	NotifyTrafficEnabled   bool   `json:"notify_traffic_enabled" gorm:"default:true"`
+	NotifyOfflineThreshold int    `json:"notify_offline_threshold" gorm:"default:1"`       // Minutes
+	NotifyTrafficThreshold int    `json:"notify_traffic_threshold" gorm:"default:90"`      // Percent
+	NotifyChannels         string `json:"notify_channels" gorm:"default:'email,telegram'"` // comma-separated
+	TrafficAlerted         bool   `json:"traffic_alerted" gorm:"default:false"`
+
 	CreatedAt  time.Time      `json:"created_at"`
 	UpdatedAt  time.Time      `json:"updated_at"`
 	LastScanAt time.Time      `json:"last_scan_at"`

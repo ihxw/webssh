@@ -29,7 +29,10 @@ export default {
         terminal: '终端',
         hosts: '主机',
         monitor: '监控',
-        history: '历史',
+        history: '状态历史',
+        statusHistory: '主机在线状态记录',
+        statusHistory: '主机在线状态记录',
+        commands: '命令',
         commands: '命令',
         recordings: '录制',
         users: '用户',
@@ -250,8 +253,22 @@ export default {
         backupPasswordDesc: '如果您希望加密备份文件，请设置密码。如果留空，则不加密。',
         passwordPlaceholder: '密码',
         restorePasswordTitle: '输入备份密码',
-        restorePasswordDesc: '如果您的备份文件已加密，请输入密码。',
-        incorrectPassword: '密码错误，请重试'
+        passwordPlaceholder: '请输入密码（可选）',
+        incorrectPassword: '密码错误，请重试',
+
+        notificationTitle: '通知设置',
+        smtpServer: 'SMTP 服务器',
+        smtpPort: 'SMTP 端口',
+        smtpUser: 'SMTP 用户名',
+        smtpPassword: 'SMTP 密码',
+        smtpFrom: '发件人邮箱',
+        smtpTo: '接收通知邮箱',
+        telegramToken: 'Telegram Bot Token',
+        telegramToken: 'Telegram Bot Token',
+        telegramChatId: 'Telegram Chat ID',
+        notificationTemplate: '通知模板',
+        resetTemplate: '恢复默认模板',
+        templateHelp: '可用变量'
     },
     network: {
         title: '网络详情',
@@ -310,6 +327,14 @@ export default {
         online: '在线',
         checking: '检查中',
         stop: '停止',
-        disableConfirm: '确定要停止监控吗？'
+        disableConfirm: '确定要停止监控吗？',
+        notificationSettings: '通知设置',
+        offlineThreshold: '离线判定阈值 (分钟)',
+        trafficThreshold: '流量预警阈值 (%)',
+        notifyChannels: '通知渠道',
+        channelEmail: '邮件',
+        channelTelegram: 'Telegram',
+        enableOfflineNotify: '启用离线通知',
+        enableTrafficNotify: '启用流量预警'
     }
 }

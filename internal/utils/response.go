@@ -1,6 +1,10 @@
 package utils
 
-import "github.com/gin-gonic/gin"
+import (
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+)
 
 // SuccessResponse returns a standard success response
 func SuccessResponse(c *gin.Context, code int, data interface{}) {
@@ -30,4 +34,18 @@ func PaginatedResponse(c *gin.Context, code int, data interface{}, total int64, 
 			"pages":     (total + int64(pageSize) - 1) / int64(pageSize),
 		},
 	})
+}
+
+// GetIntQuery retrieves a query parameter as an integer or returns a default value
+func GetIntQuery(c *gin.Context, key string, defaultValue int) int {
+	valStr := c.Query(key)
+	if valStr == "" {
+		return defaultValue
+	}
+
+	val, err := strconv.Atoi(valStr)
+	if err != nil {
+		return defaultValue
+	}
+	return val
 }

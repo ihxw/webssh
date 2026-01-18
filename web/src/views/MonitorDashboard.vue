@@ -25,6 +25,16 @@
                     <template #icon><LineChartOutlined /></template>
                 </a-button>
              </a-tooltip>
+             <a-tooltip :title="t('monitor.history')">
+                <a-button type="text" shape="circle" @click="showHistory(host.host_id)">
+                    <template #icon><HistoryOutlined /></template>
+                </a-button>
+             </a-tooltip>
+             <a-tooltip :title="t('monitor.notificationSettings')">
+                <a-button type="text" shape="circle" @click="openSettings(host)">
+                    <template #icon><SettingOutlined /></template>
+                </a-button>
+             </a-tooltip>
           </template>
           
           <div class="card-content">
@@ -110,15 +120,65 @@
         <a-empty description="No monitored hosts found" />
       </a-col>
     </a-row>
+
+    <!-- History Logs Modal -->
+    <a-modal v-model:open="historyVisible" :title="t('monitor.statusHistory')" :footer="null" width="600px">
+        <a-table :dataSource="histLogs" :columns="histColumns" :pagination="histPagination" :loading="histLoading" size="small" rowKey="id" @change="handleHistTableChange">
+            <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'status'">
+                    <a-tag :color="record.status === 'online' ? 'green' : 'red'">{{ record.status.toUpperCase() }}</a-tag>
+                </template>
+                <template v-if="column.key === 'created_at'">
+                    {{ new Date(record.created_at).toLocaleString() }}
+                </template>
+            </template>
+        </a-table>
+    </a-modal>
+
+    <!-- Notification Settings Modal -->
+    <a-modal v-model:open="settingsVisible" :title="t('monitor.notificationSettings')" @ok="handleSaveSettings" :confirmLoading="settingsLoading">
+        <a-form layout="vertical">
+            <a-form-item>
+                <a-switch v-model:checked="settingsForm.notify_offline_enabled" :checked-children="t('common.enabled')" :un-checked-children="t('common.disabled')" />
+                <span style="margin-left: 8px">{{ t('monitor.enableOfflineNotify') }}</span>
+            </a-form-item>
+            <a-form-item :label="t('monitor.offlineThreshold')" v-if="settingsForm.notify_offline_enabled">
+                <a-input-number v-model:value="settingsForm.notify_offline_threshold" :min="1" style="width: 100%" />
+            </a-form-item>
+            
+            <a-divider />
+
+            <a-form-item>
+                <a-switch v-model:checked="settingsForm.notify_traffic_enabled" :checked-children="t('common.enabled')" :un-checked-children="t('common.disabled')" />
+                <span style="margin-left: 8px">{{ t('monitor.enableTrafficNotify') }}</span>
+            </a-form-item>
+            <a-form-item :label="t('monitor.trafficThreshold')" v-if="settingsForm.notify_traffic_enabled">
+                <a-input-number v-model:value="settingsForm.notify_traffic_threshold" :min="0" :max="100" style="width: 100%" />
+            </a-form-item>
+
+            <a-divider />
+
+            <a-form-item :label="t('monitor.notifyChannels')">
+                <a-checkbox-group v-model:value="settingsForm.notify_channels_list">
+                    <a-row>
+                        <a-col :span="12"><a-checkbox value="email">{{ t('monitor.channelEmail') }}</a-checkbox></a-col>
+                        <a-col :span="12"><a-checkbox value="telegram">{{ t('monitor.channelTelegram') }}</a-checkbox></a-col>
+                    </a-row>
+                </a-checkbox-group>
+            </a-form-item>
+        </a-form>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, h, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, h, watch, reactive } from 'vue'
 import { useSSHStore } from '../stores/ssh'
-import { ArrowDownOutlined, ArrowUpOutlined, AppleOutlined, WindowsOutlined, DesktopOutlined, LineChartOutlined } from '@ant-design/icons-vue'
+import { ArrowDownOutlined, ArrowUpOutlined, AppleOutlined, WindowsOutlined, DesktopOutlined, LineChartOutlined, HistoryOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import { getWSTicket } from '../api/auth'
+import { getMonitorLogs } from '../api/ssh'
+import { message } from 'ant-design-vue'
 
 const { t } = useI18n()
 const sshStore = useSSHStore()
@@ -348,6 +408,93 @@ const updateHosts = (updates) => {
 
 const removeHost = (hostId) => {
   hosts.value = hosts.value.filter(h => h.host_id !== hostId)
+}
+
+// History Logic
+const historyVisible = ref(false)
+const histLogs = ref([])
+const histLoading = ref(false)
+const currentHistHostId = ref(0)
+const histPagination = ref({
+    current: 1,
+    pageSize: 10,
+    total: 0
+})
+
+const histColumns = [
+    { title: 'Status', key: 'status' },
+    { title: 'Time', key: 'created_at' }
+]
+
+const loadHistory = async (page = 1) => {
+    histLoading.value = true
+    try {
+        const res = await getMonitorLogs(currentHistHostId.value, page, histPagination.value.pageSize)
+        histLogs.value = res.data
+        histPagination.value.current = page
+        histPagination.value.total = res.total
+    } catch (e) {
+        console.error(e)
+    } finally {
+        histLoading.value = false
+    }
+}
+
+const showHistory = (hostId) => {
+    currentHistHostId.value = hostId
+    historyVisible.value = true
+    loadHistory(1)
+}
+
+const handleHistTableChange = (pag) => {
+    loadHistory(pag.current)
+}
+
+// Notification Settings Logic
+const settingsVisible = ref(false)
+const settingsLoading = ref(false)
+const currentSettingsHostId = ref(0)
+const settingsForm = reactive({
+    notify_offline_enabled: true,
+    notify_traffic_enabled: true,
+    notify_offline_threshold: 1,
+    notify_traffic_threshold: 90,
+    notify_channels_list: ['email', 'telegram']
+})
+
+const openSettings = (host) => {
+    currentSettingsHostId.value = host.host_id
+    const originalHost = sshStore.hosts.find(h => h.id === host.host_id)
+    if (originalHost) {
+        settingsForm.notify_offline_enabled = originalHost.notify_offline_enabled !== undefined ? originalHost.notify_offline_enabled : true
+        settingsForm.notify_traffic_enabled = originalHost.notify_traffic_enabled !== undefined ? originalHost.notify_traffic_enabled : true
+        settingsForm.notify_offline_threshold = originalHost.notify_offline_threshold || 1
+        settingsForm.notify_traffic_threshold = originalHost.notify_traffic_threshold || 90
+        const channels = originalHost.notify_channels || 'email,telegram'
+        settingsForm.notify_channels_list = channels.split(',').filter(c => c)
+    }
+    settingsVisible.value = true
+}
+
+const handleSaveSettings = async () => {
+    settingsLoading.value = true
+    try {
+        const updateData = {
+            notify_offline_enabled: settingsForm.notify_offline_enabled,
+            notify_traffic_enabled: settingsForm.notify_traffic_enabled,
+            notify_offline_threshold: settingsForm.notify_offline_threshold,
+            notify_traffic_threshold: settingsForm.notify_traffic_threshold,
+            notify_channels: settingsForm.notify_channels_list.join(',')
+        }
+        await sshStore.modifyHost(currentSettingsHostId.value, updateData)
+        message.success(t('common.saveSuccess'))
+        settingsVisible.value = false
+    } catch (e) {
+        console.error(e)
+        message.error(t('common.saveFailed'))
+    } finally {
+        settingsLoading.value = false
+    }
 }
 
 onUnmounted(() => {

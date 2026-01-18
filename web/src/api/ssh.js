@@ -36,3 +36,7 @@ export const stopMonitor = async (id) => {
 export const updateHostFingerprint = async (id, fingerprint) => {
     return await api.put(`/ssh-hosts/${id}/fingerprint`, { fingerprint })
 }
+
+export const getMonitorLogs = async (id, page = 1, pageSize = 20) => {
+    return await api.get(`/ssh-hosts/${id}/monitor/logs?page=${page}&page_size=${pageSize}`)
+}
