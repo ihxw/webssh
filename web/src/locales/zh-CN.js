@@ -245,7 +245,13 @@ export default {
         refreshExpiration: '刷新令牌过期时间',
         saveSettingsSuccess: '设置保存成功',
         saveSettingsFailed: '设置保存失败',
-        fetchSettingsFailed: '获取设置失败'
+        fetchSettingsFailed: '获取设置失败',
+        backupPasswordTitle: '设置备份密码',
+        backupPasswordDesc: '如果您希望加密备份文件，请设置密码。如果留空，则不加密。',
+        passwordPlaceholder: '密码',
+        restorePasswordTitle: '输入备份密码',
+        restorePasswordDesc: '如果您的备份文件已加密，请输入密码。',
+        incorrectPassword: '密码错误，请重试'
     },
     network: {
         title: '网络详情',

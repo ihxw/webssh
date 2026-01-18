@@ -31,6 +31,7 @@ func NewSystemHandler(db *gorm.DB, cfg *config.Config) *SystemHandler {
 // Backup handles database backup download
 func (h *SystemHandler) Backup(c *gin.Context) {
 	dbPath := h.config.Database.Path
+	password := c.Query("password")
 
 	// Create a temporary backup file to avoid locking the main DB during download
 	tmpBackup := filepath.Join(os.TempDir(), fmt.Sprintf("termiscope_backup_%d.db", time.Now().Unix()))
@@ -47,11 +48,28 @@ func (h *SystemHandler) Backup(c *gin.Context) {
 	}
 	defer os.Remove(tmpBackup)
 
+	finalFile := tmpBackup
+	downloadName := fmt.Sprintf("termiscope_backup_%s.db", time.Now().Format("20060102_150405"))
+
+	// If password is provided, encrypt the backup
+	if password != "" {
+		tmpEncBackup := tmpBackup + ".enc"
+		if err := utils.EncryptFile(tmpBackup, tmpEncBackup, password); err != nil {
+			utils.ErrorResponse(c, http.StatusInternalServerError, "failed to encrypt backup: "+err.Error())
+			return
+		}
+		defer os.Remove(tmpEncBackup)
+		finalFile = tmpEncBackup
+		// Reflect encryption in filename, though strictly not necessary if we auto-detect on restore
+		// keeping .db extension but maybe adding _enc suffix is clearer
+		downloadName = fmt.Sprintf("termiscope_backup_enc_%s.db", time.Now().Format("20060102_150405"))
+	}
+
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Transfer-Encoding", "binary")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=termiscope_backup_%s.db", time.Now().Format("20060102_150405")))
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", downloadName))
 	c.Header("Content-Type", "application/octet-stream")
-	c.File(tmpBackup)
+	c.File(finalFile)
 }
 
 // Restore handles database restoration from uploaded file
@@ -61,6 +79,7 @@ func (h *SystemHandler) Restore(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, "no file uploaded")
 		return
 	}
+	password := c.PostForm("password")
 
 	// Basic validation: check file extension
 	if filepath.Ext(file.Filename) != ".db" {
@@ -76,6 +95,19 @@ func (h *SystemHandler) Restore(c *gin.Context) {
 	}
 	defer os.Remove(tmpFile)
 
+	targetFile := tmpFile
+
+	// If password provided, attempt decryption
+	if password != "" {
+		tmpDecFile := tmpFile + ".dec"
+		if err := utils.DecryptFile(tmpFile, tmpDecFile, password); err != nil {
+			utils.ErrorResponse(c, http.StatusForbidden, "incorrect password")
+			return
+		}
+		defer os.Remove(tmpDecFile)
+		targetFile = tmpDecFile
+	}
+
 	// Close current DB connections before replacing the file
 	sqlDB, err := h.db.DB()
 	if err == nil {
@@ -84,19 +116,20 @@ func (h *SystemHandler) Restore(c *gin.Context) {
 
 	// Replace the current database file
 	dbPath := h.config.Database.Path
-	if err := copyFile(tmpFile, dbPath); err != nil {
+	if err := copyFile(targetFile, dbPath); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to restore database file: "+err.Error())
 		return
 	}
 
-	// The server should ideally be restarted here, but for now we'll return success
-	// and advise the user that a restart might be needed if they encounter issues,
-	// though GORM might re-open connections on the next request.
-	// A better way is to signal the main process to re-init the DB.
-
 	utils.SuccessResponse(c, http.StatusOK, gin.H{
-		"message": "database restored successfully, server should re-connect on next request or may require manual restart",
+		"message": "database restored successfully, server is restarting...",
 	})
+
+	// Restart server to reload database
+	go func() {
+		time.Sleep(1 * time.Second)
+		os.Exit(0)
+	}()
 }
 
 func copyFile(src, dst string) error {

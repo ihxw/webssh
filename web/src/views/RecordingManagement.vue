@@ -117,7 +117,7 @@ const playRecording = async (record) => {
   initPlayer()
   
   try {
-    const url = getRecordingStreamUrl(record.id)
+    const url = await getRecordingStreamUrl(record.id)
     const response = await fetch(url)
     const text = await response.text()
     recordingData = text.split('\n')

@@ -8,7 +8,9 @@ export const deleteRecording = async (id) => {
     return await api.delete(`/recordings/${id}`)
 }
 
-export const getRecordingStreamUrl = (id) => {
-    const token = localStorage.getItem('token')
-    return `/api/recordings/${id}/stream?token=${token}`
+import { getWSTicket } from './auth'
+
+export const getRecordingStreamUrl = async (id) => {
+    const res = await getWSTicket()
+    return `/api/recordings/${id}/stream?token=${res.ticket}`
 }

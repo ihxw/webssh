@@ -77,6 +77,34 @@
         </a-form>
       </div>
     </a-card>
+
+    <!-- Backup Password Modal -->
+    <a-modal
+      v-model:visible="backupPasswordModalVisible"
+      :title="t('system.backupPasswordTitle')"
+      @ok="executeBackup"
+      @cancel="backupPasswordModalVisible = false"
+    >
+      <p>{{ t('system.backupPasswordDesc') }}</p>
+      <a-input-password
+        v-model:value="backupPassword"
+        :placeholder="t('system.passwordPlaceholder')"
+      />
+    </a-modal>
+
+    <!-- Restore Password Modal -->
+    <a-modal
+      v-model:visible="restorePasswordModalVisible"
+      :title="t('system.restorePasswordTitle')"
+      @ok="executeRestore"
+      @cancel="closeRestoreModal"
+    >
+      <p>{{ t('system.restorePasswordDesc') }}</p>
+      <a-input-password
+        v-model:value="restorePassword"
+        :placeholder="t('system.passwordPlaceholder')"
+      />
+    </a-modal>
   </div>
 </template>
 
@@ -87,12 +115,20 @@ import { message, Modal } from 'ant-design-vue'
 import { DownloadOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { useThemeStore } from '../stores/theme'
 import api from '../api'
+import { getWSTicket } from '../api/auth'
 
 const { t } = useI18n()
 const themeStore = useThemeStore()
 const backupLoading = ref(false)
 const restoreLoading = ref(false)
 const settingsLoading = ref(false)
+
+// Backup & Restore State
+const backupPasswordModalVisible = ref(false)
+const backupPassword = ref('')
+const restorePasswordModalVisible = ref(false)
+const restorePassword = ref('')
+const restoreFile = ref(null)
 
 const settingsForm = reactive({
   ssh_timeout: '30s',
@@ -128,16 +164,39 @@ const handleSaveSettings = async () => {
   }
 }
 
-const handleBackup = async () => {
+const handleBackup = () => {
+  backupPassword.value = ''
+  backupPasswordModalVisible.value = true
+}
+
+const executeBackup = async () => {
+  backupPasswordModalVisible.value = false
   backupLoading.value = true
   try {
-    // We use a direct window.open or a hidden anchor for downloading binary files via GET
-    const token = localStorage.getItem('token')
-    const downloadUrl = `/api/system/backup?token=${token}`
+    const res = await getWSTicket()
+    const ticket = res.ticket
+    let downloadUrl = `/api/system/backup?token=${ticket}`
+    if (backupPassword.value) {
+      downloadUrl += `&password=${encodeURIComponent(backupPassword.value)}`
+    }
+    
+    // Check if browser supports direct download via anchor
+    // If we want to check for errors first, we might need fetch/blob approach, 
+    // but for large files streaming via direct link is better.
+    // If backend errors, it returns JSON which browser might try to download.
+    // A better approach for error handling is doing a HEAD or simple check first,
+    // but here we stick to simple anchor click.
     
     const link = document.createElement('a')
     link.href = downloadUrl
-    link.setAttribute('download', 'termiscope_backup.db')
+    // Don't set a static filename here if we want the server-provided one (from Content-Disposition)
+    // But 'download' attribute is useful. We can try to guess or leave it empty to respect header.
+    // However, if we set 'download', it forces download.
+    // If we want to support dynamic naming from server, we should omit the filename in 'download' attribute 
+    // or set it after checking headers (which requires fetch).
+    // For now, let's just let it download.
+    // link.setAttribute('download', '') 
+    
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -163,19 +222,40 @@ const handleRestoreChange = (info) => {
     return
   }
   
-  Modal.confirm({
-    title: t('system.restoreConfirmTitle'),
-    content: t('system.restoreConfirmContent'),
-    okText: t('common.confirm'),
-    cancelText: t('common.cancel'),
-    onOk: () => performRestore(info.file.originFileObj),
-  })
+  // Store file and show password modal
+  restoreFile.value = info.file.originFileObj
+  restorePassword.value = ''
+  restorePasswordModalVisible.value = true
 }
 
-const performRestore = async (file) => {
+const closeRestoreModal = () => {
+  restorePasswordModalVisible.value = false
+  restoreFile.value = null
+}
+
+const executeRestore = () => {
+  restorePasswordModalVisible.value = false
+  if (restoreFile.value) {
+    Modal.confirm({
+      title: t('system.restoreConfirmTitle'),
+      content: t('system.restoreConfirmContent'),
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      onOk: () => performRestore(restoreFile.value, restorePassword.value),
+      onCancel: () => {
+        restoreFile.value = null
+      }
+    })
+  }
+}
+
+const performRestore = async (file, password) => {
   restoreLoading.value = true
   const formData = new FormData()
   formData.append('file', file)
+  if (password) {
+    formData.append('password', password)
+  }
 
   try {
     await api.post('/system/restore', formData, {
@@ -188,8 +268,18 @@ const performRestore = async (file) => {
     setTimeout(() => {
       window.location.reload()
     }, 2000)
+    restoreFile.value = null // Clear on success
   } catch (err) {
-    message.error(err.response?.data?.error || t('system.restoreFailed'))
+    // Check for incorrect password (403 Forbidden or specific message)
+    if (err.response?.status === 403 || err.response?.data?.error === 'incorrect password') {
+        message.error(t('system.incorrectPassword'))
+        // Re-open modal for retry
+        restorePasswordModalVisible.value = true
+        // Do NOT clear restoreFile.value so we can retry with same file
+    } else {
+        message.error(err.response?.data?.error || t('system.restoreFailed'))
+        restoreFile.value = null // Clear on other errors
+    }
   } finally {
     restoreLoading.value = false
   }

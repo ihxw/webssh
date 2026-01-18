@@ -121,6 +121,7 @@ import { useSSHStore } from '../stores/ssh'
 import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
+import { getWSTicket } from '../api/auth'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -230,37 +231,43 @@ const formatSpeed = (bytesPerSec) => {
   return formatBytes(bytesPerSec) + '/s'
 }
 
-const connect = () => {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const token = localStorage.getItem('token')
-  const wsUrl = `${protocol}//${window.location.host}/api/monitor/stream?token=${token}`
-  
-  socket.value = new WebSocket(wsUrl)
+const connect = async () => {
+  try {
+    const res = await getWSTicket()
+    const ticket = res.ticket
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${protocol}//${window.location.host}/api/monitor/stream?token=${ticket}`
+    
+    socket.value = new WebSocket(wsUrl)
 
-  socket.value.onopen = () => {
-    connected.value = true
-  }
-
-  socket.value.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data)
-      const dataList = msg.type === 'init' || msg.type === 'update' ? msg.data : []
-      if (!Array.isArray(dataList)) return
-
-      const myData = dataList.find(h => h.host_id === hostId)
-      if (myData) {
-          interfaces.value = myData.interfaces || []
-          monthlyRx.value = myData.net_monthly_rx || 0
-          monthlyTx.value = myData.net_monthly_tx || 0
-      }
-    } catch (e) {
-      console.error(e)
+    socket.value.onopen = () => {
+      connected.value = true
     }
-  }
 
-  socket.value.onclose = () => {
-    connected.value = false
-    setTimeout(connect, 3000)
+    socket.value.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data)
+        const dataList = msg.type === 'init' || msg.type === 'update' ? msg.data : []
+        if (!Array.isArray(dataList)) return
+
+        const myData = dataList.find(h => h.host_id === hostId)
+        if (myData) {
+            interfaces.value = myData.interfaces || []
+            monthlyRx.value = myData.net_monthly_rx || 0
+            monthlyTx.value = myData.net_monthly_tx || 0
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    socket.value.onclose = () => {
+      connected.value = false
+      setTimeout(connect, 3000)
+    }
+  } catch (err) {
+    console.error('Failed to connect network monitor:', err)
+    setTimeout(connect, 5000)
   }
 }
 

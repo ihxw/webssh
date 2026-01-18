@@ -244,7 +244,13 @@ export default {
         refreshExpiration: 'Refresh Token Expiration',
         saveSettingsSuccess: 'Settings saved successfully',
         saveSettingsFailed: 'Failed to save settings',
-        fetchSettingsFailed: 'Failed to fetch settings'
+        fetchSettingsFailed: 'Failed to fetch settings',
+        backupPasswordTitle: 'Set Backup Password',
+        backupPasswordDesc: 'Set a password to encrypt the backup file. Leave empty for no encryption.',
+        passwordPlaceholder: 'Password',
+        restorePasswordTitle: 'Enter Backup Password',
+        restorePasswordDesc: 'If your backup file is encrypted, please enter the password.',
+        incorrectPassword: 'Incorrect password, please try again'
     },
     network: {
         title: 'Network Detail',
