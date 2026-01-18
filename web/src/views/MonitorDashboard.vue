@@ -72,7 +72,7 @@
              <div style="margin-bottom: 8px">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
                 <span>
-                  {{ t('monitor.disk') }} (/)
+                  {{ t('monitor.disk') }}
                   <span style="font-size: 11px; color: #8c8c8c; margin-left: 4px">
                     {{ formatBytes(host.disk_used) }} / {{ formatBytes(host.disk_total) }}
                   </span>
