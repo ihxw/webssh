@@ -57,25 +57,29 @@
             <!-- RAM -->
             <div style="margin-bottom: 8px">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
-                <span>{{ t('monitor.ram') }}</span>
+                <span>
+                  {{ t('monitor.ram') }}
+                  <span style="font-size: 11px; color: #8c8c8c; margin-left: 4px">
+                    {{ formatBytes(host.mem_used) }} / {{ formatBytes(host.mem_total) }}
+                  </span>
+                </span>
                 <span>{{ formatPct(host.mem_used, host.mem_total) }}%</span>
               </div>
               <a-progress :percent="calcPct(host.mem_used, host.mem_total)" :status="getStatus(calcPct(host.mem_used, host.mem_total))" :show-info="false" stroke-linecap="square" />
-              <div style="font-size: 10px; color: #bfbfbf; text-align: right">
-                {{ formatBytes(host.mem_used) }} / {{ formatBytes(host.mem_total) }}
-              </div>
             </div>
 
             <!-- Disk -->
              <div style="margin-bottom: 8px">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
-                <span>{{ t('monitor.disk') }} (/)</span>
+                <span>
+                  {{ t('monitor.disk') }} (/)
+                  <span style="font-size: 11px; color: #8c8c8c; margin-left: 4px">
+                    {{ formatBytes(host.disk_used) }} / {{ formatBytes(host.disk_total) }}
+                  </span>
+                </span>
                 <span>{{ formatPct(host.disk_used, host.disk_total) }}%</span>
               </div>
               <a-progress :percent="calcPct(host.disk_used, host.disk_total)" :show-info="false" stroke-linecap="square" />
-              <div style="font-size: 10px; color: #bfbfbf; text-align: right">
-                {{ formatBytes(host.disk_used) }} / {{ formatBytes(host.disk_total) }}
-              </div>
             </div>
 
             <!-- Network -->
