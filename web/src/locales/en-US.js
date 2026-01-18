@@ -21,7 +21,9 @@ export default {
         reset: 'Reset',
         copy: 'Copy',
         frontendVersion: 'Frontend Version',
-        backendVersion: 'Backend Version'
+        backendVersion: 'Backend Version',
+        fe: 'FE',
+        be: 'BE'
     },
     nav: {
         terminal: 'Terminal',
@@ -52,7 +54,8 @@ export default {
         usernameRequired: 'Please input your username!',
         passwordRequired: 'Please input your password!',
         usernamePlaceholder: 'Enter username or email',
-        passwordPlaceholder: 'Enter password'
+        passwordPlaceholder: 'Enter password',
+        passwordMinLength: 'New password must be at least 6 characters'
     },
     terminal: {
         title: 'Terminal',
@@ -168,7 +171,8 @@ export default {
         deleteConfirm: 'Are you sure you want to delete this user?',
         userSaved: 'User saved successfully',
         userDeleted: 'User deleted successfully',
-        cannotDeleteSelf: 'Cannot delete your own account'
+        cannotDeleteSelf: 'Cannot delete your own account',
+        lastLogin: 'Last Login'
     },
     theme: {
         light: 'Light',
@@ -207,7 +211,13 @@ export default {
         loginDesc: 'Please enter the 6-digit code from your authenticator app or use a backup code.',
         verificationCodeLabel: 'Verification Code',
         verificationCodeRequired: 'Please input your verification code!',
-        verificationCodePlaceholder: 'Enter 6-digit code or backup code'
+        verificationCodePlaceholder: 'Enter 6-digit code or backup code',
+        disableWarning: 'Disabling Two-Factor Authentication will reduce account security',
+        setupFailed: 'Failed to setup 2FA',
+        regenerateConfirm: 'Regenerating backup codes will invalidate old ones. Continue?',
+        regenerateFailed: 'Failed to regenerate backup codes',
+        secretCopied: 'Secret key copied to clipboard',
+        backupCodesDownloaded: 'Backup codes downloaded'
     },
     system: {
         backupTitle: 'Database Backup',
@@ -235,5 +245,64 @@ export default {
         saveSettingsSuccess: 'Settings saved successfully',
         saveSettingsFailed: 'Failed to save settings',
         fetchSettingsFailed: 'Failed to fetch settings'
+    },
+    network: {
+        title: 'Network Detail',
+        configuration: 'Configuration',
+        primaryInterface: 'Primary Interface',
+        primaryInterfaceHelp: 'Main interface for dashboard statistics',
+        selectInterfaces: 'Select Interfaces',
+        autoTotal: 'Auto (Total)',
+        resetDay: 'Traffic Reset Day',
+        resetDayHelp: 'Day of the month to reset traffic statistics',
+        trafficLimit: 'Traffic Limit',
+        monthlyLimit: 'Monthly Limit (GB)',
+        unlimitedHelp: '0 means unlimited',
+        alreadyUsed: 'Used Traffic (GB)',
+        adjustmentHelp: 'Correction for used traffic this month',
+        counterMode: 'Counting Mode',
+        counterModeHelp: 'Traffic type to count towards limit',
+        modeTotal: 'Total (Upload + Download)',
+        modeTx: 'Upload Only (Tx)',
+        modeRx: 'Download Only (Rx)',
+        saveConfig: 'Save Configuration',
+        monthlyTraffic: 'Monthly Traffic',
+        inbound: 'Inbound (Rx)',
+        outbound: 'Outbound (Tx)',
+        usage: 'Usage',
+        remaining: 'Remaining',
+        calcInfo: 'Calculated based on primary interface',
+        interfaces: 'Interfaces',
+        interfaceName: 'Name',
+        macAddress: 'MAC Address',
+        ipAddress: 'IP Address',
+        realTimeSpeed: 'Real-time Speed',
+        totalTraffic: 'Total Traffic (Since Boot)'
+    },
+    monitor: {
+        cpu: 'CPU',
+        ram: 'RAM',
+        disk: 'Disk',
+        uptime: 'Uptime',
+        total: 'Total',
+        usage: 'Usage',
+        deployAgent: 'Deploy Agent',
+        stopMonitor: 'Stop Monitoring',
+        deployConfirm: 'Are you sure you want to deploy the monitor agent to {name}?',
+        deployInsecure: 'Skip SSL Certificate Verification (Insecure)',
+        deployInsecureWarning: 'Warning: Skipping SSL verification may expose the connection to MITM attacks. Use only for trusted networks or self-signed certificates.',
+        deploySuccess: 'Monitor agent deployed successfully',
+        deployFailed: 'Failed to deploy monitor',
+        monitorDisabled: 'Monitoring disabled',
+        stopFailed: 'Failed to stop monitor',
+        status: 'Status',
+        monitoring: 'Monitoring',
+        enabled: 'Enabled',
+        disabled: 'Disabled',
+        offline: 'Offline',
+        online: 'Online',
+        checking: 'Checking',
+        stop: 'Stop',
+        disableConfirm: 'Disable monitoring?'
     }
 }

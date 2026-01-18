@@ -27,16 +27,16 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
             <div style="display: flex; align-items: center">
-              <a-tooltip :title="hostStatuses[record.id]?.status === 'online' ? 'Online' : (hostStatuses[record.id]?.error || 'Checking...')">
+              <a-tooltip :title="hostStatuses[record.id]?.status === 'online' ? t('monitor.online') : (hostStatuses[record.id]?.error || t('monitor.checking'))">
                 <a-tag v-if="hostStatuses[record.id]?.status === 'online'" color="success">
                   {{ hostStatuses[record.id]?.latency }}ms
                 </a-tag>
                 <a-tag v-else-if="hostStatuses[record.id]?.status === 'offline'" color="error">
-                  Offline
+                  {{ t('monitor.offline') }}
                 </a-tag>
                 <a-tag v-else color="processing">
                   <template #icon><LoadingOutlined /></template>
-                  Checking
+                  {{ t('monitor.checking') }}
                 </a-tag>
               </a-tooltip>
             </div>
@@ -45,10 +45,10 @@
              <div style="display: flex; align-items: center">
                 <a-tag v-if="record.monitor_enabled" color="processing">
                   <template #icon><DashboardOutlined /></template>
-                  Enabled
+                  {{ t('monitor.enabled') }}
                 </a-tag>
                 <a-tag v-else color="default">
-                  Disabled
+                  {{ t('monitor.disabled') }}
                 </a-tag>
              </div>
           </template>
@@ -61,16 +61,16 @@
                 @click="openDeployModal(record)"
               >
                 <DashboardOutlined />
-                Monitor
+                {{ t('monitor.deployAgent') }}
               </a-button>
               <a-popconfirm
                 v-else
-                title="Disable monitoring?"
+                :title="t('monitor.disableConfirm')"
                 @confirm="handleStopMonitor(record)"
               >
                  <a-button size="small" danger :loading="monitorLoading[record.id]">
                    <StopOutlined />
-                   Stop
+                   {{ t('monitor.stop') }}
                  </a-button>
               </a-popconfirm>
               <a-button size="small" @click="handleConnect(record)">
@@ -152,16 +152,16 @@
     <!-- Deploy Monitor Modal -->
     <a-modal
       v-model:open="deployVisible"
-      title="Deploy Monitor Agent"
+      :title="t('monitor.deployAgent')"
       @ok="handleDeploy"
       :confirmLoading="deploying"
     >
-      <p>Are you sure you want to deploy the monitor agent to <b>{{ deployHost?.name }}</b>?</p>
+      <p>{{ t('monitor.deployConfirm', { name: deployHost?.name }) }}</p>
       <a-checkbox v-model:checked="deployInsecure">
-        Skip SSL Certificate Verification (Insecure)
+        {{ t('monitor.deployInsecure') }}
       </a-checkbox>
       <p style="margin-top: 8px; font-size: 12px; color: #faad14;" v-if="deployInsecure">
-        Warning: Skipping SSL verification may expose the connection to MITM attacks. Use only for trusted networks or self-signed certificates.
+        {{ t('monitor.deployInsecureWarning') }}
       </p>
     </a-modal>
   </div>
@@ -214,8 +214,8 @@ const hostForm = ref({
 const columns = computed(() => [
   { title: t('host.name'), dataIndex: 'name', key: 'name' },
   { title: t('host.host'), dataIndex: 'host', key: 'host' },
-  { title: 'Status', key: 'status', width: 100 },
-  { title: 'Monitor', key: 'monitor', width: 100 },
+  { title: t('monitor.status'), key: 'status', width: 100 },
+  { title: t('monitor.monitoring'), key: 'monitor', width: 100 },
   { title: t('host.port'), dataIndex: 'port', key: 'port' },
   { title: t('host.username'), dataIndex: 'username', key: 'username' },
   { title: t('host.group'), dataIndex: 'group_name', key: 'group_name' },
@@ -237,11 +237,11 @@ const handleDeploy = async () => {
     
     try {
         await deployMonitor(deployHost.value.id, deployInsecure.value)
-        message.success('Monitor agent deployed successfully')
+        message.success(t('monitor.deploySuccess'))
         deployHost.value.monitor_enabled = true
         deployVisible.value = false
     } catch (error) {
-        message.error('Failed to deploy monitor: ' + (error.response?.data?.error || error.message))
+        message.error(t('monitor.deployFailed') + ': ' + (error.response?.data?.error || error.message))
     } finally {
         deploying.value = false
         monitorLoading.value[deployHost.value.id] = false
@@ -252,10 +252,10 @@ const handleStopMonitor = async (host) => {
   monitorLoading.value[host.id] = true
   try {
     await stopMonitor(host.id)
-    message.success('Monitoring disabled')
+    message.success(t('monitor.monitorDisabled'))
     host.monitor_enabled = false
   } catch (error) {
-    message.error('Failed to stop monitor')
+    message.error(t('monitor.stopFailed'))
   } finally {
     monitorLoading.value[host.id] = false
   }

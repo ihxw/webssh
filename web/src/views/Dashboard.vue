@@ -52,8 +52,8 @@
 
           <div style="display: flex; align-items: center; gap: 16px">
             <div style="font-size: 12px; color: #8c8c8c; display: flex; flex-direction: column; line-height: 1.2; text-align: right">
-              <span>FE: {{ frontendVersion }}</span>
-              <span>BE: {{ backendVersion }}</span>
+              <span>{{ t('common.fe') }}: {{ frontendVersion }}</span>
+              <span>{{ t('common.be') }}: {{ backendVersion }}</span>
             </div>
             
             <a-button size="small" @click="localeStore.toggleLocale">

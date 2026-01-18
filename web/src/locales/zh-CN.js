@@ -21,7 +21,9 @@ export default {
         reset: '重置',
         copy: '复制',
         frontendVersion: '前端版本',
-        backendVersion: '后端版本'
+        backendVersion: '后端版本',
+        fe: '前端',
+        be: '后端'
     },
     nav: {
         terminal: '终端',
@@ -52,7 +54,8 @@ export default {
         usernameRequired: '请输入用户名',
         passwordRequired: '请输入密码',
         usernamePlaceholder: '请输入用户名或邮箱',
-        passwordPlaceholder: '请输入密码'
+        passwordPlaceholder: '请输入密码',
+        passwordMinLength: '新密码至少需要 6 个字符'
     },
     terminal: {
         title: '终端',
@@ -168,7 +171,8 @@ export default {
         deleteConfirm: '确定要删除这个用户吗？',
         userSaved: '用户保存成功',
         userDeleted: '用户删除成功',
-        cannotDeleteSelf: '不能删除自己的账户'
+        cannotDeleteSelf: '不能删除自己的账户',
+        lastLogin: '上次登录'
     },
     theme: {
         light: '浅色',
@@ -208,7 +212,13 @@ export default {
         loginDesc: '请输入认证器应用中的 6 位验证码或使用备用码',
         verificationCodeLabel: '验证码',
         verificationCodeRequired: '请输入验证码',
-        verificationCodePlaceholder: '请输入 6 位验证码或备用码'
+        verificationCodePlaceholder: '请输入 6 位验证码或备用码',
+        disableWarning: '禁用双因素认证将降低账户安全性',
+        setupFailed: '设置 2FA 失败',
+        regenerateConfirm: '重新生成备用码将使旧的备用码失效，确定继续吗？',
+        regenerateFailed: '重新生成备用码失败',
+        secretCopied: '密钥已复制到剪贴板',
+        backupCodesDownloaded: '备用码已下载'
     },
     system: {
         backupTitle: '数据库备份',
@@ -276,6 +286,24 @@ export default {
         disk: '磁盘',
         uptime: '运行时间',
         total: '总量',
-        usage: '使用率'
+        usage: '使用率',
+        deployAgent: '部署监控',
+        stopMonitor: '停止监控',
+        deployConfirm: '确定要向 {name} 部署监控代理吗？',
+        deployInsecure: '跳过 SSL 证书验证 (不安全)',
+        deployInsecureWarning: '警告：跳过 SSL 验证可能导致连接受到中间人攻击。请仅在受信任的网络或自签名证书环境中使用。',
+        deploySuccess: '监控代理部署成功',
+        deployFailed: '部署监控失败',
+        monitorDisabled: '监控已禁用',
+        stopFailed: '停止监控失败',
+        status: '状态',
+        monitoring: '监控中',
+        enabled: '已启用',
+        disabled: '已禁用',
+        offline: '离线',
+        online: '在线',
+        checking: '检查中',
+        stop: '停止',
+        disableConfirm: '确定要停止监控吗？'
     }
 }

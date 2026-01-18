@@ -21,7 +21,7 @@
             {{ authStore.user?.status }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="Last Login">
+        <a-descriptions-item :label="t('user.lastLogin')">
           {{ formatDate(authStore.user?.last_login_at) }}
         </a-descriptions-item>
         <a-descriptions-item :label="t('twofa.title')">
@@ -129,7 +129,7 @@
       :confirmLoading="loading"
       @ok="handleDisable2FA"
     >
-      <a-alert message="禁用双因素认证将降低账户安全性" type="warning" show-icon style="margin-bottom: 16px" />
+      <a-alert :message="t('twofa.disableWarning')" type="warning" show-icon style="margin-bottom: 16px" />
       <a-form layout="vertical">
         <a-form-item :label="t('twofa.verificationCode')">
           <a-input 
@@ -216,7 +216,7 @@ const handleChangePassword = async () => {
   }
 
   if (passwordForm.value.new.length < 6) {
-    message.error('New password must be at least 6 characters')
+    message.error(t('auth.passwordMinLength'))
     return
   }
 
@@ -241,7 +241,7 @@ const handleSetup2FA = async () => {
     secretKey.value = response.secret
     show2FASetupModal.value = true
   } catch (error) {
-    message.error('Failed to setup 2FA')
+    message.error(t('twofa.setupFailed'))
   } finally {
     loading.value = false
   }
@@ -296,7 +296,7 @@ const handleDisable2FA = async () => {
 const handleRegenerateBackupCodes = async () => {
   Modal.confirm({
     title: t('twofa.regenerateBackupCodes'),
-    content: '重新生成备用码将使旧的备用码失效，确定继续吗？',
+    content: t('twofa.regenerateConfirm'),
     onOk: async () => {
       try {
         const response = await regenerateBackupCodes()
@@ -304,7 +304,7 @@ const handleRegenerateBackupCodes = async () => {
         showBackupCodesModal.value = true
         message.success(t('twofa.backupCodesRegenerated'))
       } catch (error) {
-        message.error('Failed to regenerate backup codes')
+        message.error(t('twofa.regenerateFailed'))
       }
     }
   })
@@ -312,7 +312,7 @@ const handleRegenerateBackupCodes = async () => {
 
 const copySecret = () => {
   navigator.clipboard.writeText(secretKey.value)
-  message.success('Secret key copied to clipboard')
+  message.success(t('twofa.secretCopied'))
 }
 
 const downloadBackupCodes = () => {
@@ -324,6 +324,6 @@ const downloadBackupCodes = () => {
   a.download = 'termiscope-backup-codes.txt'
   a.click()
   URL.revokeObjectURL(url)
-  message.success('Backup codes downloaded')
+  message.success(t('twofa.backupCodesDownloaded'))
 }
 </script>
