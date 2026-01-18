@@ -10,7 +10,7 @@
     />
 
     <a-row :gutter="[24, 24]">
-      <a-col :xs="24" :sm="12" :md="8" :lg="6" v-for="host in sortedHosts" :key="host.host_id">
+      <a-col :xs="24" :sm="12" :md="8" class="col-5" v-for="host in sortedHosts" :key="host.host_id">
         <a-card hoverable class="monitor-card" :class="{ offline: isOffline(host) }">
           <template #title>
             <a-space>
@@ -42,7 +42,12 @@
             <!-- CPU -->
             <div style="margin-bottom: 8px">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px">
-                <span>{{ t('monitor.cpu') }}</span>
+                <span>
+                  {{ t('monitor.cpu') }}
+                  <span v-if="host.cpu_count" style="font-size: 11px; color: #8c8c8c; margin-left: 4px">
+                     {{ host.cpu_count }}C {{ host.cpu_model }}
+                  </span>
+                </span>
                 <span>{{ formatCpu(host.cpu) }}%</span>
               </div>
               <a-progress :percent="host.cpu" :status="getStatus(host.cpu)" :show-info="false" stroke-linecap="square" />
@@ -148,6 +153,8 @@ const syncHostsFromStore = () => {
         os: '',
         uptime: 0,
         cpu: 0,
+        cpu_count: 0,
+        cpu_model: '',
         mem_used: 0,
         mem_total: 0,
         disk_used: 0,
@@ -343,5 +350,13 @@ onUnmounted(() => {
 .offline {
   filter: grayscale(100%);
   opacity: 0.7;
+}
+
+@media (min-width: 1200px) {
+  .col-5 {
+    width: 20%;
+    flex: 0 0 20%;
+    max-width: 20%;
+  }
 }
 </style>
