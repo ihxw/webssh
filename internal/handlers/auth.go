@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -49,6 +50,7 @@ type RefreshTokenRequest struct {
 }
 
 func (h *AuthHandler) generateTokens(user *models.User) (string, string, error) {
+	log.Printf("DEBUG: Generating tokens with AccessExpiration config: %s", h.config.Security.AccessExpiration)
 	accessExp, err := time.ParseDuration(h.config.Security.AccessExpiration)
 	if err != nil {
 		accessExp = 60 * time.Minute
